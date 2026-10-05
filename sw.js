@@ -1,4 +1,4 @@
-const CACHE = "beach-volley-live-v1";
+const CACHE = "beach-volley-leon-3c";
 const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", event => {
