@@ -1,575 +1,67 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Beach Volley Leon 3C</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const SUPABASE_URL = 'https://drowryrybuigxuvqpjqx.supabase.co';
-        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_qobUIlouC_-1a0f6sNjV_A_B6bsmDp8';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
-        #resetModal { display: none; }
-        #resetModal.show { display: flex; }
-        tbody tr { transition: all 0.3s ease-in-out; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Beach Volley Leon 3C</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+#resetModal,#loginModal{display:none} #resetModal.show,#loginModal.show{display:flex}
+tbody tr{transition:all .3s ease-in-out}
+</style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 pb-20">
+<div id="setupScreen" class="p-4 max-w-md mx-auto">
+<h1 class="text-3xl font-bold text-center text-blue-600 mb-2">Beach Volley Leon 3C</h1>
+<p class="text-sm text-center text-gray-500 mb-6">Dividi i 12 giocatori nelle 3 categorie di partenza.</p>
+<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500"><h2 class="font-bold text-lg text-yellow-600 pb-1 mb-3">Girone Serie A</h2><div id="group-a-inputs" class="space-y-2"></div></div>
+<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-gray-400"><h2 class="font-bold text-lg text-gray-600 pb-1 mb-3">Girone Serie B</h2><div id="group-b-inputs" class="space-y-2"></div></div>
+<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500"><h2 class="font-bold text-lg text-orange-600 pb-1 mb-3">Girone Serie C</h2><div id="group-c-inputs" class="space-y-2"></div></div>
+<button onclick="startTournament()" class="w-full bg-blue-600 text-white font-bold text-xl py-4 rounded-xl shadow-lg active:bg-blue-700">Genera Torneo</button>
+<div class="mt-4 text-center"><a href="classifica.html" class="text-blue-600 font-bold">📊 Classifica generale</a></div>
+</div>
 
-    <!-- SCHERMATA DI INSERIMENTO GIOCATORI -->
-    <div id="setupScreen" class="p-4 max-w-md mx-auto">
-        <h1 class="text-3xl font-bold text-center text-blue-600 mb-2">Beach Volley Leon 3C</h1>
-        <p class="text-sm text-center text-gray-500 mb-6">Dividi i 12 giocatori nelle 3 categorie di partenza.</p>
+<div id="mainScreen" class="hidden max-w-md mx-auto p-4 space-y-8">
+<div id="phase1-container" class="space-y-6"></div>
+<div id="live-standings-container" class="bg-white rounded-xl shadow-lg overflow-hidden border border-blue-200">
+<div class="bg-blue-600 text-white text-center font-black uppercase tracking-wider py-3">Classifica Live</div>
+<table class="w-full text-left border-collapse"><thead class="bg-blue-50 text-blue-900 text-sm border-b border-blue-200"><tr><th class="p-3">Giocatore</th><th class="p-3 text-center">Pt</th><th class="p-3 text-center">Diff</th></tr></thead><tbody id="standings-body" class="divide-y divide-gray-200"></tbody></table>
+<div class="p-4 bg-gray-50 flex flex-col gap-2 text-xs text-gray-600 border-t border-gray-200"><div>🟨 1°-4° ➔ Finale Serie A</div><div>⬜ 5°-8° ➔ Finale Serie B</div><div>🟧 9°-12° ➔ Finale Serie C</div></div></div>
+<div id="finals-action-container" class="hidden pt-2"><button onclick="generateFinals()" class="w-full bg-yellow-500 text-white font-bold text-xl py-4 rounded-xl shadow-lg animate-pulse">🏆 Genera Finali</button></div>
+<div id="finals-container" class="hidden mt-6 space-y-6"><h2 class="text-2xl font-black text-center text-gray-800 uppercase tracking-widest border-b-4 border-gray-800 pb-2">Finali</h2><div id="finals-matches" class="space-y-6"></div></div>
+<div id="general-action-container" class="hidden pt-2 border-t border-gray-300"><button onclick="saveGeneralClassification()" class="w-full bg-green-600 text-white font-bold text-lg py-4 rounded-xl shadow-lg">🏆 Aggiorna classifica generale</button><a href="classifica.html" class="block text-center mt-3 text-blue-600 font-bold">📊 Vai alla classifica generale</a><p id="general-status" class="text-center text-sm mt-2"></p></div>
+<div class="pt-4 border-t border-gray-300"><button onclick="showResetModal()" class="w-full bg-red-100 text-red-600 border border-red-200 font-bold py-3 rounded-xl active:bg-red-200">🔄 Reset Torneo</button></div>
+</div>
 
-        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500">
-            <h2 class="font-bold text-lg text-yellow-600 pb-1 mb-3">Girone  A</h2>
-            <div id="group-a-inputs" class="space-y-2"></div>
-        </div>
+<div id="resetModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"><h3 class="text-xl font-bold mb-2">Sei sicuro?</h3><p class="text-gray-600 mb-6">Tutti i punteggi e i giocatori inseriti verranno eliminati dal dispositivo.</p><div class="flex space-x-3"><button onclick="hideResetModal()" class="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-xl">Annulla</button><button onclick="executeReset()" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl">Sì, Resetta</button></div></div></div>
 
-        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-gray-400">
-            <h2 class="font-bold text-lg text-gray-600 pb-1 mb-3">Girone  B</h2>
-            <div id="group-b-inputs" class="space-y-2"></div>
-        </div>
+<div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4"><div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"><h3 class="text-xl font-bold mb-1">Accesso amministratore</h3><p class="text-sm text-gray-500 mb-5">Serve per aggiornare la classifica generale.</p><input id="loginEmail" type="email" autocomplete="username" placeholder="Email" class="w-full p-3 border rounded-lg mb-3"><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password" class="w-full p-3 border rounded-lg mb-3"><p id="loginError" class="text-red-600 text-sm mb-3"></p><div class="flex space-x-3"><button onclick="hideLoginModal()" class="flex-1 bg-gray-200 font-bold py-3 rounded-xl">Annulla</button><button onclick="performLogin()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl">Accedi</button></div></div></div>
 
-        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500">
-            <h2 class="font-bold text-lg text-orange-600 pb-1 mb-3">Girone  C</h2>
-            <div id="group-c-inputs" class="space-y-2"></div>
-        </div>
-
-        <button onclick="startTournament()" class="w-full bg-blue-600 text-white font-bold text-xl py-4 rounded-xl shadow-lg active:bg-blue-700">
-            Genera Torneo
-        </button>
-    </div>
-
-    <!-- SCHERMATA PRINCIPALE (A SCORRIMENTO UNICO) -->
-    <div id="mainScreen" class="hidden max-w-md mx-auto p-4 space-y-8">
-        
-        <!-- Vista Partite -->
-        <div id="phase1-container" class="space-y-6"></div>
-        
-        <!-- Classifica Live -->
-        <div id="live-standings-container" class="bg-white rounded-xl shadow-lg overflow-hidden border border-blue-200">
-            <div class="bg-blue-600 text-white text-center font-black uppercase tracking-wider py-3">
-                Classifica Live
-            </div>
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-blue-50 text-blue-900 text-sm border-b border-blue-200">
-                    <tr>
-                        <th class="p-3">Giocatore</th>
-                        <th class="p-3 text-center">Pt</th>
-                        <th class="p-3 text-center">Diff</th>
-                    </tr>
-                </thead>
-                <tbody id="standings-body" class="divide-y divide-gray-200">
-                    <!-- Generato da JS -->
-                </tbody>
-            </table>
-            <div class="p-4 bg-gray-50 flex flex-col gap-2 text-xs text-gray-600 border-t border-gray-200">
-                <div class="flex items-center gap-2"><span class="w-3 h-3 bg-yellow-200 inline-block rounded"></span> 1°- 4° ➔ Finale  A</div>
-                <div class="flex items-center gap-2"><span class="w-3 h-3 bg-gray-200 inline-block rounded"></span> 5°- 8° ➔ Finale  B</div>
-                <div class="flex items-center gap-2"><span class="w-3 h-3 bg-orange-200 inline-block rounded"></span> 9°- 12° ➔ Finale  C</div>
-            </div>
-        </div>
-
-        <!-- Pulsante Genera Finali -->
-        <div id="finals-action-container" class="hidden pt-2">
-            <button onclick="generateFinals()" class="w-full bg-yellow-500 text-white font-bold text-xl py-4 rounded-xl shadow-lg animate-pulse">
-                🏆 Genera Finali
-            </button>
-        </div>
-        
-        <!-- Vista Finali -->
-        <div id="finals-container" class="hidden mt-6 space-y-6">
-            <h2 class="text-2xl font-black text-center text-gray-800 uppercase tracking-widest border-b-4 border-gray-800 pb-2">Finali</h2>
-            <div id="finals-matches" class="space-y-6"></div>
-        </div>
-        
-        <!-- Aggiorna classifica generale -->
-        <div id="general-action-container" class="hidden pt-4">
-            <button onclick="updateGeneralClassification()" class="w-full bg-blue-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg">
-                🏆 Aggiorna classifica generale
-            </button>
-            <p id="general-update-status" class="text-center text-sm text-gray-500 mt-2"></p>
-        </div>
-
-        <div class="pt-10 border-t border-gray-300">
-            <button onclick="showResetModal()" class="w-full bg-red-100 text-red-600 border border-red-200 font-bold py-3 rounded-xl active:bg-red-200">
-                🔄 Reset Torneo
-            </button>
-        </div>
-    </div>
-
-    <!-- MODAL RESET -->
-    <div id="resetModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 class="text-xl font-bold mb-2">Sei sicuro?</h3>
-            <p class="text-gray-600 mb-6">Tutti i punteggi e i giocatori inseriti verranno eliminati per sempre.</p>
-            <div class="flex space-x-3">
-                <button onclick="hideResetModal()" class="flex-1 bg-gray-200 text-gray-800 font-bold py-3 rounded-xl">Annulla</button>
-                <button onclick="executeReset()" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl">Sì, Resetta</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let state = {
-            players: [],
-            phase1Matches: [],
-            finalsMatches: [],
-            standings: []
-        };
-
-        const groups = [
-            { id: 'a', name: ' A', color: 'yellow-500', bg: 'yellow-50', border: 'yellow-200' },
-            { id: 'b', name: ' B', color: 'gray-500', bg: 'gray-50', border: 'gray-200' },
-            { id: 'c', name: ' C', color: 'orange-600', bg: 'orange-50', border: 'orange-200' }
-        ];
-
-        window.onload = () => {
-            groups.forEach(g => {
-                const div = document.getElementById(`group-${g.id}-inputs`);
-                for(let i = 1; i <= 4; i++) {
-                    div.innerHTML += `<input type="text" id="${g.id}-${i}" placeholder="Giocatore ${i}" class="w-full p-3 border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-${g.color.split('-')[0]}-500 outline-none transition mb-2">`;
-                }
-            });
-            loadFromStorage();
-        };
-
-        function startTournament() {
-            state.players = [];
-            state.phase1Matches = [];
-            state.finalsMatches = [];
-
-            groups.forEach(g => {
-                let groupPlayers = [];
-                for(let i = 1; i <= 4; i++) {
-                    let name = document.getElementById(`${g.id}-${i}`).value.trim() || `Giocatore ${g.id.toUpperCase()}${i}`;
-                    let p = { id: `${g.id}${i}`, name: name, group: g.name };
-                    state.players.push(p);
-                    groupPlayers.push(p);
-                }
-                
-                const matchups = [
-                    [0, 1, 2, 3],
-                    [0, 2, 1, 3],
-                    [0, 3, 1, 2]
-                ];
-
-                matchups.forEach((m, idx) => {
-                    state.phase1Matches.push({
-                        id: `p1-${g.id}-${idx}`,
-                        groupName: g.name,
-                        colorBg: g.bg,
-                        colorText: g.color,
-                        p1: groupPlayers[m[0]].name, p1_id: groupPlayers[m[0]].id,
-                        p2: groupPlayers[m[1]].name, p2_id: groupPlayers[m[1]].id,
-                        p3: groupPlayers[m[2]].name, p3_id: groupPlayers[m[2]].id,
-                        p4: groupPlayers[m[3]].name, p4_id: groupPlayers[m[3]].id,
-                        scoreA: '', scoreB: '', saved: false
-                    });
-                });
-            });
-
-            saveToStorage();
-            renderApp();
-            
-            document.getElementById('setupScreen').classList.add('hidden');
-            document.getElementById('mainScreen').classList.remove('hidden');
-        }
-
-        function renderApp() {
-            renderPhase1();
-            renderFinals();
-            updateStandings();
-            checkPhase1Completion();
-        }
-
-        function renderPhase1() {
-            const container = document.getElementById('phase1-container');
-            container.innerHTML = '';
-
-            groups.forEach(g => {
-                const groupMatches = state.phase1Matches.filter(m => m.groupName === g.name);
-                
-                let html = `
-                    <div class="bg-white rounded-xl shadow-sm p-4 border-t-4 border-${g.color}">
-                        <h3 class="text-xl font-bold text-center text-${g.color} mb-4 bg-${g.bg} py-2 rounded-lg">Girone ${g.name}</h3>
-                        <div class="space-y-4">
-                `;
-                
-                groupMatches.forEach(m => { html += buildMatchHTML(m, 'phase1'); });
-                html += `</div></div>`;
-                container.innerHTML += html;
-            });
-        }
-
-        function renderFinals() {
-            const container = document.getElementById('finals-container');
-            const matchesContainer = document.getElementById('finals-matches');
-            
-            if (state.finalsMatches.length > 0) {
-                container.classList.remove('hidden');
-                matchesContainer.innerHTML = '';
-                state.finalsMatches.forEach(m => {
-                    matchesContainer.innerHTML += buildMatchHTML(m, 'finals');
-                });
-            } else {
-                container.classList.add('hidden');
-            }
-        }
-
-        function buildMatchHTML(match, type) {
-            const isSaved = match.saved;
-            const bColor = isSaved ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200';
-            const titleHtml = match.title ? `<div class="text-center font-bold text-lg mb-3 ${match.titleColor}">${match.title}</div>` : '';
-
-            return `
-                <div id="card-${match.id}" class="border-2 rounded-xl p-3 ${bColor} transition-colors duration-300">
-                    ${titleHtml}
-                    <div class="flex flex-col space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="leading-tight">
-                                <div class="font-bold text-gray-800">${match.p1}</div>
-                                <div class="font-bold text-gray-800">${match.p2}</div>
-                            </div>
-                            <input type="number" pattern="[0-9]*" inputmode="numeric" 
-                                id="${match.id}-a" value="${match.scoreA}" oninput="handleScoreChange('${match.id}', '${type}')"
-                                class="w-16 h-12 text-center text-xl font-bold border-2 rounded-lg focus:border-blue-500 focus:bg-white bg-transparent outline-none transition-all" placeholder="-">
-                        </div>
-                        
-                        <div class="text-center text-gray-400 font-bold text-sm -my-1">VS</div>
-                        
-                        <div class="flex items-center justify-between">
-                            <div class="leading-tight">
-                                <div class="font-bold text-gray-800">${match.p3}</div>
-                                <div class="font-bold text-gray-800">${match.p4}</div>
-                            </div>
-                            <input type="number" pattern="[0-9]*" inputmode="numeric" 
-                                id="${match.id}-b" value="${match.scoreB}" oninput="handleScoreChange('${match.id}', '${type}')"
-                                class="w-16 h-12 text-center text-xl font-bold border-2 rounded-lg focus:border-blue-500 focus:bg-white bg-transparent outline-none transition-all" placeholder="-">
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function handleScoreChange(matchId, type) {
-            let sA = document.getElementById(`${matchId}-a`).value;
-            let sB = document.getElementById(`${matchId}-b`).value;
-            
-            let matchArray = type === 'phase1' ? state.phase1Matches : state.finalsMatches;
-            let match = matchArray.find(m => m.id === matchId);
-            
-            match.scoreA = sA; 
-            match.scoreB = sB;
-            
-            let card = document.getElementById(`card-${matchId}`);
-
-            if (sA !== '' && sB !== '') {
-                match.saved = true;
-                if(card) {
-                    card.classList.remove('bg-gray-50', 'border-gray-200');
-                    card.classList.add('bg-green-50', 'border-green-300');
-                }
-            } else {
-                match.saved = false;
-                if(card) {
-                    card.classList.remove('bg-green-50', 'border-green-300');
-                    card.classList.add('bg-gray-50', 'border-gray-200');
-                }
-            }
-            
-            // Aggiorna sempre la classifica, sia se siamo in fase 1 che nelle finali
-            updateStandings();
-            
-            checkPhase1Completion();
-            saveToStorage();
-        }
-
-        function checkPhase1Completion() {
-            const allPhase1Saved = state.phase1Matches.length > 0 && state.phase1Matches.every(m => m.saved);
-            const finalsNotGenerated = state.finalsMatches.length === 0;
-            const actionContainer = document.getElementById('finals-action-container');
-            
-            if (allPhase1Saved && finalsNotGenerated) {
-                actionContainer.classList.remove('hidden');
-            } else {
-                actionContainer.classList.add('hidden');
-            }
-        }
-
-        function updateStandings() {
-            let stats = {};
-            state.players.forEach(p => {
-                stats[p.id] = { id: p.id, name: p.name, pts: 0, diff: 0, won: 0 };
-            });
-
-            // Calcola i punti unendo le partite dei gironi e le finali giocate
-            let allMatches = [...state.phase1Matches, ...state.finalsMatches];
-            
-            allMatches.forEach(m => {
-                if (m.saved) {
-                    let sa = parseInt(m.scoreA);
-                    let sb = parseInt(m.scoreB);
-                    let ptsA = 0, ptsB = 0;
-
-                    if (sa > sb) {
-                        ptsA = 3; ptsB = sb >= 20 ? 1 : 0;
-                    } else if (sb > sa) {
-                        ptsB = 3; ptsA = sa >= 20 ? 1 : 0;
-                    } else {
-                        ptsA = 1; ptsB = 1;
-                    }
-
-                    [m.p1_id, m.p2_id].forEach(id => { 
-                        if(stats[id]) { stats[id].pts += ptsA; stats[id].diff += (sa - sb); if(sa>sb) stats[id].won++; }
-                    });
-                    [m.p3_id, m.p4_id].forEach(id => { 
-                        if(stats[id]) { stats[id].pts += ptsB; stats[id].diff += (sb - sa); if(sb>sa) stats[id].won++; }
-                    });
-                }
-            });
-
-            state.standings = Object.values(stats).sort((a, b) => {
-                if (b.pts !== a.pts) return b.pts - a.pts;
-                if (b.diff !== a.diff) return b.diff - a.diff;
-                return b.won - a.won;
-            });
-
-            let tbody = document.getElementById('standings-body');
-            tbody.innerHTML = '';
-            
-            state.standings.forEach((p, index) => {
-                let rowBg = '';
-                if (index < 4) { rowBg = 'bg-yellow-50'; }
-                else if (index < 8) { rowBg = 'bg-gray-100'; }
-                else { rowBg = 'bg-orange-50'; }
-                
-                let diffColor = p.diff > 0 ? 'text-green-600' : p.diff < 0 ? 'text-red-600' : 'text-gray-500';
-                
-                tbody.innerHTML += `
-                    <tr class="${rowBg} border-b border-white">
-                        <td class="p-3 font-medium flex items-center gap-2">
-                            <span class="w-5 text-xs font-bold text-gray-500">${index+1}.</span> ${p.name}
-                        </td>
-                        <td class="p-3 text-center font-bold text-lg">${p.pts}</td>
-                        <td class="p-3 text-center font-bold ${diffColor}">${p.diff > 0 ? '+'+p.diff : p.diff}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        function generateFinals() {
-            const std = state.standings;
-            
-            state.finalsMatches = [
-                // FINALE  A (Top 4)
-                // Gara 1: 1°+4° vs 2°+3°
-                {
-                    id: 'final-a-1', title: 'Finale  A - Gara 1', titleColor: 'text-yellow-600',
-                    p1: std[0].name, p1_id: std[0].id, p2: std[3].name, p2_id: std[3].id,
-                    p3: std[1].name, p3_id: std[1].id, p4: std[2].name, p4_id: std[2].id,
-                    scoreA: '', scoreB: '', saved: false
-                },
-                // Gara 2: 1°+3° vs 2°+4°
-                {
-                    id: 'final-a-2', title: 'Finale  A - Gara 2', titleColor: 'text-yellow-600',
-                    p1: std[0].name, p1_id: std[0].id, p2: std[2].name, p2_id: std[2].id,
-                    p3: std[1].name, p3_id: std[1].id, p4: std[3].name, p4_id: std[3].id,
-                    scoreA: '', scoreB: '', saved: false
-                },
-                
-                // FINALE  B (Posizioni 5-8)
-                {
-                    id: 'final-b-1', title: 'Finale  B - Gara 1', titleColor: 'text-gray-600',
-                    p1: std[4].name, p1_id: std[4].id, p2: std[7].name, p2_id: std[7].id,
-                    p3: std[5].name, p3_id: std[5].id, p4: std[6].name, p4_id: std[6].id,
-                    scoreA: '', scoreB: '', saved: false
-                },
-                {
-                    id: 'final-b-2', title: 'Finale  B - Gara 2', titleColor: 'text-gray-600',
-                    p1: std[4].name, p1_id: std[4].id, p2: std[6].name, p2_id: std[6].id,
-                    p3: std[5].name, p3_id: std[5].id, p4: std[7].name, p4_id: std[7].id,
-                    scoreA: '', scoreB: '', saved: false
-                },
-
-                // FINALE  C (Posizioni 9-12)
-                {
-                    id: 'final-c-1', title: 'Finale  C - Gara 1', titleColor: 'text-orange-600',
-                    p1: std[8].name, p1_id: std[8].id, p2: std[11].name, p2_id: std[11].id,
-                    p3: std[9].name, p3_id: std[9].id, p4: std[10].name, p4_id: std[10].id,
-                    scoreA: '', scoreB: '', saved: false
-                },
-                {
-                    id: 'final-c-2', title: 'Finale  C - Gara 2', titleColor: 'text-orange-600',
-                    p1: std[8].name, p1_id: std[8].id, p2: std[10].name, p2_id: std[10].id,
-                    p3: std[9].name, p3_id: std[9].id, p4: std[11].name, p4_id: std[11].id,
-                    scoreA: '', scoreB: '', saved: false
-                }
-            ];
-
-            saveToStorage();
-            renderApp();
-            
-            setTimeout(() => {
-                document.getElementById('finals-container').scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-        }
-
-
-        // ============================================
-        // CLASSIFICA GENERALE SUPABASE
-        // ============================================
-
-        async function updateGeneralClassification() {
-            const status = document.getElementById('general-update-status');
-            const button = document.querySelector('#general-action-container button');
-
-            if (state.finalsMatches.length !== 6 || !state.finalsMatches.every(m => m.saved)) {
-                status.textContent = 'Completi prima tutte le 6 partite delle finali.';
-                return;
-            }
-
-            button.disabled = true;
-            button.classList.add('opacity-60');
-            status.textContent = 'Controllo accesso e aggiornamento...';
-
-            try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-
-                if (!session) {
-                    status.textContent = 'Accesso amministratore richiesto.';
-                    alert('Per aggiornare la classifica generale deve prima accedere come amministratore.');
-                    return;
-                }
-
-                const tournamentDate = new Date().toISOString().slice(0, 10);
-                const tournamentName = 'Beach Volley Leon 3C';
-
-                // Evita di registrare due volte lo stesso torneo nella stessa data.
-                const { data: existing, error: existingError } = await supabaseClient
-                    .from('tournaments')
-                    .select('id')
-                    .eq('name', tournamentName)
-                    .eq('tournament_date', tournamentDate)
-                    .maybeSingle();
-
-                if (existingError) throw existingError;
-
-                if (existing) {
-                    status.textContent = 'Questo torneo è già presente nella classifica generale.';
-                    alert('Il torneo di oggi è già stato registrato. Non verrà duplicato.');
-                    return;
-                }
-
-                // Recupera i giocatori già presenti.
-                const { data: dbPlayers, error: playersError } = await supabaseClient
-                    .from('players')
-                    .select('id,name');
-
-                if (playersError) throw playersError;
-
-                const playerIds = {};
-
-                for (const player of state.players) {
-                    const normalized = player.name.trim().toLowerCase();
-                    const existingPlayer = (dbPlayers || []).find(
-                        p => p.name.trim().toLowerCase() === normalized
-                    );
-
-                    if (existingPlayer) {
-                        playerIds[player.id] = existingPlayer.id;
-                    } else {
-                        const { data: newPlayer, error: newPlayerError } = await supabaseClient
-                            .from('players')
-                            .insert({ name: player.name.trim() })
-                            .select('id')
-                            .single();
-
-                        if (newPlayerError) throw newPlayerError;
-                        playerIds[player.id] = newPlayer.id;
-                    }
-                }
-
-                // Crea il torneo.
-                const { data: tournament, error: tournamentError } = await supabaseClient
-                    .from('tournaments')
-                    .insert({
-                        name: tournamentName,
-                        tournament_date: tournamentDate
-                    })
-                    .select('id')
-                    .single();
-
-                if (tournamentError) throw tournamentError;
-
-                // Salva i punti finali di tutti i 12 giocatori.
-                const results = state.standings.map(player => ({
-                    tournament_id: tournament.id,
-                    player_id: playerIds[player.id],
-                    points: player.pts
-                }));
-
-                const { error: resultsError } = await supabaseClient
-                    .from('tournament_results')
-                    .insert(results);
-
-                if (resultsError) throw resultsError;
-
-                status.textContent = 'Classifica generale aggiornata correttamente ✓';
-                alert('🏆 Classifica generale aggiornata!');
-            } catch (error) {
-                console.error(error);
-                status.textContent = 'Errore durante l’aggiornamento.';
-                alert('Errore durante l’aggiornamento della classifica: ' + (error.message || error));
-            } finally {
-                button.disabled = false;
-                button.classList.remove('opacity-60');
-            }
-        }
-
-        function showResetModal() { document.getElementById('resetModal').classList.add('show'); }
-        function hideResetModal() { document.getElementById('resetModal').classList.remove('show'); }
-        
-        function executeReset() {
-            localStorage.removeItem('volleyStateLiveV3');
-            
-            groups.forEach(g => {
-                for(let i = 1; i <= 4; i++) {
-                    document.getElementById(`${g.id}-${i}`).value = '';
-                }
-            });
-            
-            hideResetModal();
-            document.getElementById('mainScreen').classList.add('hidden');
-            document.getElementById('setupScreen').classList.remove('hidden');
-            window.scrollTo(0,0);
-        }
-
-        function saveToStorage() { localStorage.setItem('volleyStateLiveV3', JSON.stringify(state)); }
-
-        function loadFromStorage() {
-            let data = localStorage.getItem('volleyStateLiveV3');
-            if (data) {
-                state = JSON.parse(data);
-                groups.forEach(g => {
-                    let groupPlayers = state.players.filter(p => p.group === g.name);
-                    groupPlayers.forEach((p, idx) => {
-                        if(!p.name.startsWith('Giocatore')) {
-                            document.getElementById(`${g.id}-${idx+1}`).value = p.name;
-                        }
-                    });
-                });
-
-                document.getElementById('setupScreen').classList.add('hidden');
-                document.getElementById('mainScreen').classList.remove('hidden');
-                renderApp();
-            }
-        }
-    </script>
-</body>
-</html>
+<script>
+const SUPABASE_URL='https://drowryrybuigxuvqpjqx.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_qobUIlouC_-1a0f6sNjV_A_B6bsmDp8';
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let state={players:[],phase1Matches:[],finalsMatches:[],standings:[]};
+const groups=[{id:'a',name:'Serie A',color:'yellow-500',bg:'yellow-50',border:'yellow-200'},{id:'b',name:'Serie B',color:'gray-500',bg:'gray-50',border:'gray-200'},{id:'c',name:'Serie C',color:'orange-600',bg:'orange-50',border:'orange-200'}];
+window.onload=()=>{groups.forEach(g=>{const div=document.getElementById(`group-${g.id}-inputs`);for(let i=1;i<=4;i++)div.innerHTML+=`<input type="text" id="${g.id}-${i}" placeholder="Giocatore ${i}" class="w-full p-3 border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-${g.color.split('-')[0]}-500 outline-none transition mb-2">`});loadFromStorage()};
+function startTournament(){state.players=[];state.phase1Matches=[];state.finalsMatches=[];groups.forEach(g=>{let gp=[];for(let i=1;i<=4;i++){let name=document.getElementById(`${g.id}-${i}`).value.trim()||`Giocatore ${g.id.toUpperCase()}${i}`;let p={id:`${g.id}${i}`,name,group:g.name};state.players.push(p);gp.push(p)}const matchups=[[0,1,2,3],[0,2,1,3],[0,3,1,2]];matchups.forEach((m,idx)=>state.phase1Matches.push({id:`p1-${g.id}-${idx}`,groupName:g.name,colorBg:g.bg,colorText:g.color,p1:gp[m[0]].name,p1_id:gp[m[0]].id,p2:gp[m[1]].name,p2_id:gp[m[1]].id,p3:gp[m[2]].name,p3_id:gp[m[2]].id,p4:gp[m[3]].name,p4_id:gp[m[3]].id,scoreA:'',scoreB:'',saved:false}))});saveToStorage();renderApp();document.getElementById('setupScreen').classList.add('hidden');document.getElementById('mainScreen').classList.remove('hidden')}
+function renderApp(){renderPhase1();renderFinals();updateStandings();checkPhase1Completion();checkFinalsCompletion()}
+function renderPhase1(){const c=document.getElementById('phase1-container');c.innerHTML='';groups.forEach(g=>{const ms=state.phase1Matches.filter(m=>m.groupName===g.name);let html=`<div class="bg-white rounded-xl shadow-sm p-4 border-t-4 border-${g.color}"><h3 class="text-xl font-bold text-center text-${g.color} mb-4 bg-${g.bg} py-2 rounded-lg">Girone ${g.name}</h3><div class="space-y-4">`;ms.forEach(m=>html+=buildMatchHTML(m,'phase1'));html+='</div></div>';c.innerHTML+=html})}
+function renderFinals(){const c=document.getElementById('finals-container'),mc=document.getElementById('finals-matches');if(state.finalsMatches.length){c.classList.remove('hidden');mc.innerHTML='';state.finalsMatches.forEach(m=>mc.innerHTML+=buildMatchHTML(m,'finals'))}else c.classList.add('hidden')}
+function buildMatchHTML(m,type){const saved=m.saved,b=saved?'bg-green-50 border-green-300':'bg-gray-50 border-gray-200',title=m.title?`<div class="text-center font-bold text-lg mb-3 ${m.titleColor}">${m.title}</div>`:'';return `<div id="card-${m.id}" class="border-2 rounded-xl p-3 ${b} transition-colors duration-300">${title}<div class="flex flex-col space-y-3"><div class="flex items-center justify-between"><div class="leading-tight"><div class="font-bold text-gray-800">${m.p1}</div><div class="font-bold text-gray-800">${m.p2}</div></div><input type="number" pattern="[0-9]*" inputmode="numeric" id="${m.id}-a" value="${m.scoreA}" oninput="handleScoreChange('${m.id}','${type}')" class="w-16 h-12 text-center text-xl font-bold border-2 rounded-lg focus:border-blue-500 focus:bg-white bg-transparent outline-none" placeholder="-"></div><div class="text-center text-gray-400 font-bold text-sm -my-1">VS</div><div class="flex items-center justify-between"><div class="leading-tight"><div class="font-bold text-gray-800">${m.p3}</div><div class="font-bold text-gray-800">${m.p4}</div></div><input type="number" pattern="[0-9]*" inputmode="numeric" id="${m.id}-b" value="${m.scoreB}" oninput="handleScoreChange('${m.id}','${type}')" class="w-16 h-12 text-center text-xl font-bold border-2 rounded-lg focus:border-blue-500 focus:bg-white bg-transparent outline-none" placeholder="-"></div></div></div>`}
+function handleScoreChange(id,type){const a=document.getElementById(`${id}-a`).value,b=document.getElementById(`${id}-b`).value,arr=type==='phase1'?state.phase1Matches:state.finalsMatches,m=arr.find(x=>x.id===id);m.scoreA=a;m.scoreB=b;m.saved=a!==''&&b!=='';const card=document.getElementById(`card-${id}`);if(card){card.classList.toggle('bg-green-50',m.saved);card.classList.toggle('border-green-300',m.saved);card.classList.toggle('bg-gray-50',!m.saved);card.classList.toggle('border-gray-200',!m.saved)}updateStandings();if(type==='phase1')checkPhase1Completion();checkFinalsCompletion();saveToStorage()}
+function checkPhase1Completion(){const ok=state.phase1Matches.length>0&&state.phase1Matches.every(m=>m.saved)&&state.finalsMatches.length===0;document.getElementById('finals-action-container').classList.toggle('hidden',!ok)}
+function checkFinalsCompletion(){const ok=state.finalsMatches.length===6&&state.finalsMatches.every(m=>m.saved);document.getElementById('general-action-container').classList.toggle('hidden',!ok)}
+function updateStandings(){let stats={};state.players.forEach(p=>stats[p.id]={id:p.id,name:p.name,pts:0,diff:0,won:0});[...state.phase1Matches,...state.finalsMatches].forEach(m=>{if(!m.saved)return;let sa=parseInt(m.scoreA),sb=parseInt(m.scoreB),pa=0,pb=0;if(sa>sb){pa=3;pb=sb>=20?1:0}else if(sb>sa){pb=3;pa=sa>=20?1:0}else pa=pb=1;[m.p1_id,m.p2_id].forEach(id=>{if(stats[id]){stats[id].pts+=pa;stats[id].diff+=sa-sb;if(sa>sb)stats[id].won++}});[m.p3_id,m.p4_id].forEach(id=>{if(stats[id]){stats[id].pts+=pb;stats[id].diff+=sb-sa;if(sb>sa)stats[id].won++}})});state.standings=Object.values(stats).sort((a,b)=>b.pts-a.pts||b.diff-a.diff||b.won-a.won);const tbody=document.getElementById('standings-body');tbody.innerHTML='';state.standings.forEach((p,i)=>{let bg=i<4?'bg-yellow-50':i<8?'bg-gray-100':'bg-orange-50',dc=p.diff>0?'text-green-600':p.diff<0?'text-red-600':'text-gray-500';tbody.innerHTML+=`<tr class="${bg} border-b border-white"><td class="p-3 font-medium flex items-center gap-2"><span class="w-5 text-xs font-bold text-gray-500">${i+1}.</span>${p.name}</td><td class="p-3 text-center font-bold text-lg">${p.pts}</td><td class="p-3 text-center font-bold ${dc}">${p.diff>0?'+'+p.diff:p.diff}</td></tr>`})}
+function generateFinals(){const s=state.standings;if(s.length<12)return;state.finalsMatches=[['a',0,3,1,2],['a',0,2,1,3],['b',4,7,5,6],['b',4,6,5,7],['c',8,11,9,10],['c',8,10,9,11]].map((x,i)=>{const [g,a,b,c,d]=x;const colors={a:'text-yellow-600',b:'text-gray-600',c:'text-orange-600'};return{id:`final-${g}-${(i%2)+1}`,title:`Finale Serie ${g.toUpperCase()} - Gara ${(i%2)+1}`,titleColor:colors[g],p1:s[a].name,p1_id:s[a].id,p2:s[b].name,p2_id:s[b].id,p3:s[c].name,p3_id:s[c].id,p4:s[d].name,p4_id:s[d].id,scoreA:'',scoreB:'',saved:false}});saveToStorage();renderApp();setTimeout(()=>document.getElementById('finals-container').scrollIntoView({behavior:'smooth'}),100)}
+async function saveGeneralClassification(){if(!state.finalsMatches.length||!state.finalsMatches.every(m=>m.saved)){alert('Completi tutte le 6 finali prima di aggiornare la classifica.');return}const {data:{session}}=await supabaseClient.auth.getSession();if(!session){showLoginModal();return}const {data:admin,error:ae}=await supabaseClient.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();if(ae||!admin){alert('Questo account non è autorizzato come amministratore.');return}const status=document.getElementById('general-status');status.textContent='Salvataggio in corso...';try{const today=new Date().toISOString().slice(0,10);const tournamentName='Beach Volley Leon 3C';let {data:tournaments,error:te}=await supabaseClient.from('tournaments').select('id').eq('name',tournamentName).eq('tournament_date',today).limit(1);if(te)throw te;let tid=tournaments&&tournaments[0]?.id;if(!tid){const ins=await supabaseClient.from('tournaments').insert({name:tournamentName,tournament_date:today}).select('id').single();if(ins.error)throw ins.error;tid=ins.data.id}const existing=await supabaseClient.from('players').select('id,name');if(existing.error)throw existing.error;const map=new Map((existing.data||[]).map(p=>[p.name.trim().toLowerCase(),p.id]));const rows=[];for(const p of state.players){let pid=map.get(p.name.trim().toLowerCase());if(!pid){const ins=await supabaseClient.from('players').insert({name:p.name}).select('id').single();if(ins.error)throw ins.error;pid=ins.data.id;map.set(p.name.trim().toLowerCase(),pid)}rows.push({tournament_id:tid,player_id:pid,points:pFinalPoints(p.id)})}const up=await supabaseClient.from('tournament_results').upsert(rows,{onConflict:'tournament_id,player_id'});if(up.error)throw up.error;status.textContent='✅ Classifica generale aggiornata.'}catch(e){console.error(e);status.textContent='';alert('Errore nel salvataggio: '+(e.message||e))}}
+function pFinalPoints(id){const p=state.standings.find(x=>x.id===id);return p?p.pts:0}
+function showLoginModal(){document.getElementById('loginError').textContent='';document.getElementById('loginModal').classList.add('show');setTimeout(()=>document.getElementById('loginEmail').focus(),100)}function hideLoginModal(){document.getElementById('loginModal').classList.remove('show')}
+async function performLogin(){const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;const err=document.getElementById('loginError');err.textContent='';const {error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){err.textContent='Email o password non corretti.';return}hideLoginModal();saveGeneralClassification()}
+function showResetModal(){document.getElementById('resetModal').classList.add('show')}function hideResetModal(){document.getElementById('resetModal').classList.remove('show')}
+function executeReset(){localStorage.removeItem('volleyStateLiveV3');groups.forEach(g=>{for(let i=1;i<=4;i++)document.getElementById(`${g.id}-${i}`).value='' });hideResetModal();document.getElementById('mainScreen').classList.add('hidden');document.getElementById('setupScreen').classList.remove('hidden');window.scrollTo(0,0)}
+function saveToStorage(){localStorage.setItem('volleyStateLiveV3',JSON.stringify(state))}
+function loadFromStorage(){const data=localStorage.getItem('volleyStateLiveV3');if(!data)return;try{state=JSON.parse(data);groups.forEach(g=>state.players.filter(p=>p.group===g.name).forEach((p,i)=>{if(!p.name.startsWith('Giocatore'))document.getElementById(`${g.id}-${i+1}`).value=p.name}));document.getElementById('setupScreen').classList.add('hidden');document.getElementById('mainScreen').classList.remove('hidden');renderApp()}catch(e){console.error(e);localStorage.removeItem('volleyStateLiveV3')}}
+</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}</script></body></html>

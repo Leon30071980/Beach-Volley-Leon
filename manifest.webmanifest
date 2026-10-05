@@ -1,10 +1,9 @@
 {
-  "name": "Beach Volley Leon 3C",
-  "short_name": "Beach Volley",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#f3f4f6",
-  "theme_color": "#2563eb",
-  "orientation": "portrait",
-  "icons": []
+  "name":"Beach Volley Leon 3C",
+  "short_name":"Beach Volley Leon 3C",
+  "start_url":"./index.html",
+  "display":"standalone",
+  "background_color":"#f3f4f6",
+  "theme_color":"#2563eb",
+  "icons":[]
 }
