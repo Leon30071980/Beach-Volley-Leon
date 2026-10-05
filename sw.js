@@ -1,10 +1,17 @@
-const CACHE = "beach-volley-leon-3c";
-const APP_SHELL = ["./", "./index.html", "./manifest.webmanifest"];
+const CACHE = "beach-volley-leon-3c-v1";
+
+const APP_SHELL = [
+    "./",
+    "./index.html",
+    "./classifica.html",
+    "./manifest.webmanifest"
+];
 
 self.addEventListener("install", event => {
     event.waitUntil(
         caches.open(CACHE).then(cache => cache.addAll(APP_SHELL))
     );
+
     self.skipWaiting();
 });
 
@@ -18,6 +25,7 @@ self.addEventListener("activate", event => {
             )
         )
     );
+
     self.clients.claim();
 });
 
@@ -28,9 +36,11 @@ self.addEventListener("fetch", event => {
         caches.match(event.request).then(cached => {
             return cached || fetch(event.request).then(response => {
                 const copy = response.clone();
+
                 caches.open(CACHE).then(cache => {
                     cache.put(event.request, copy);
                 });
+
                 return response;
             });
         })
