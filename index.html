@@ -16,9 +16,9 @@ tbody tr{transition:all .3s ease-in-out}
 <div id="setupScreen" class="p-4 max-w-md mx-auto">
 <h1 class="text-3xl font-bold text-center text-blue-600 mb-2">Beach Volley Leon 3C</h1>
 <p class="text-sm text-center text-gray-500 mb-6">Dividi i 12 giocatori nelle 3 categorie di partenza.</p>
-<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500"><h2 class="font-bold text-lg text-yellow-600 pb-1 mb-3">Girone Serie A</h2><div id="group-a-inputs" class="space-y-2"></div></div>
-<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-gray-400"><h2 class="font-bold text-lg text-gray-600 pb-1 mb-3">Girone Serie B</h2><div id="group-b-inputs" class="space-y-2"></div></div>
-<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500"><h2 class="font-bold text-lg text-orange-600 pb-1 mb-3">Girone Serie C</h2><div id="group-c-inputs" class="space-y-2"></div></div>
+<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500"><h2 class="font-bold text-lg text-yellow-600 pb-1 mb-3">Girone A</h2><div id="group-a-inputs" class="space-y-2"></div></div>
+<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-gray-400"><h2 class="font-bold text-lg text-gray-600 pb-1 mb-3">Girone B</h2><div id="group-b-inputs" class="space-y-2"></div></div>
+<div class="mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500"><h2 class="font-bold text-lg text-orange-600 pb-1 mb-3">Girone C</h2><div id="group-c-inputs" class="space-y-2"></div></div>
 <button onclick="startTournament()" class="w-full bg-blue-600 text-white font-bold text-xl py-4 rounded-xl shadow-lg active:bg-blue-700">Genera Torneo</button>
 <div class="mt-4 text-center"><a href="classifica.html" class="text-blue-600 font-bold">📊 Classifica generale</a></div>
 </div>
@@ -28,7 +28,7 @@ tbody tr{transition:all .3s ease-in-out}
 <div id="live-standings-container" class="bg-white rounded-xl shadow-lg overflow-hidden border border-blue-200">
 <div class="bg-blue-600 text-white text-center font-black uppercase tracking-wider py-3">Classifica Live</div>
 <table class="w-full text-left border-collapse"><thead class="bg-blue-50 text-blue-900 text-sm border-b border-blue-200"><tr><th class="p-3">Giocatore</th><th class="p-3 text-center">Pt</th><th class="p-3 text-center">Diff</th></tr></thead><tbody id="standings-body" class="divide-y divide-gray-200"></tbody></table>
-<div class="p-4 bg-gray-50 flex flex-col gap-2 text-xs text-gray-600 border-t border-gray-200"><div>🟨 1°-4° ➔ Finale Serie A</div><div>⬜ 5°-8° ➔ Finale Serie B</div><div>🟧 9°-12° ➔ Finale Serie C</div></div></div>
+<div class="p-4 bg-gray-50 flex flex-col gap-2 text-xs text-gray-600 border-t border-gray-200"><div>🟨 1°-4° ➔ Finale A</div><div>⬜ 5°-8° ➔ Finale B</div><div>🟧 9°-12° ➔ Finale C</div></div></div>
 <div id="finals-action-container" class="hidden pt-2"><button onclick="generateFinals()" class="w-full bg-yellow-500 text-white font-bold text-xl py-4 rounded-xl shadow-lg animate-pulse">🏆 Genera Finali</button></div>
 <div id="finals-container" class="hidden mt-6 space-y-6"><h2 class="text-2xl font-black text-center text-gray-800 uppercase tracking-widest border-b-4 border-gray-800 pb-2">Finali</h2><div id="finals-matches" class="space-y-6"></div></div>
 <div id="general-action-container" class="hidden pt-2 border-t border-gray-300"><button onclick="saveGeneralClassification()" class="w-full bg-green-600 text-white font-bold text-lg py-4 rounded-xl shadow-lg">🏆 Aggiorna classifica generale</button><a href="classifica.html" class="block text-center mt-3 text-blue-600 font-bold">📊 Vai alla classifica generale</a><p id="general-status" class="text-center text-sm mt-2"></p></div>
@@ -44,7 +44,7 @@ const SUPABASE_URL='https://drowryrybuigxuvqpjqx.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_qobUIlouC_-1a0f6sNjV_A_B6bsmDp8';
 const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let state={players:[],phase1Matches:[],finalsMatches:[],standings:[]};
-const groups=[{id:'a',name:'Serie A',color:'yellow-500',bg:'yellow-50',border:'yellow-200'},{id:'b',name:'Serie B',color:'gray-500',bg:'gray-50',border:'gray-200'},{id:'c',name:'Serie C',color:'orange-600',bg:'orange-50',border:'orange-200'}];
+const groups=[{id:'a',name:'A',color:'yellow-500',bg:'yellow-50',border:'yellow-200'},{id:'b',name:'B',color:'gray-500',bg:'gray-50',border:'gray-200'},{id:'c',name:'C',color:'orange-600',bg:'orange-50',border:'orange-200'}];
 window.onload=()=>{groups.forEach(g=>{const div=document.getElementById(`group-${g.id}-inputs`);for(let i=1;i<=4;i++)div.innerHTML+=`<input type="text" id="${g.id}-${i}" placeholder="Giocatore ${i}" class="w-full p-3 border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-${g.color.split('-')[0]}-500 outline-none transition mb-2">`});loadFromStorage()};
 function startTournament(){state.players=[];state.phase1Matches=[];state.finalsMatches=[];groups.forEach(g=>{let gp=[];for(let i=1;i<=4;i++){let name=document.getElementById(`${g.id}-${i}`).value.trim()||`Giocatore ${g.id.toUpperCase()}${i}`;let p={id:`${g.id}${i}`,name,group:g.name};state.players.push(p);gp.push(p)}const matchups=[[0,1,2,3],[0,2,1,3],[0,3,1,2]];matchups.forEach((m,idx)=>state.phase1Matches.push({id:`p1-${g.id}-${idx}`,groupName:g.name,colorBg:g.bg,colorText:g.color,p1:gp[m[0]].name,p1_id:gp[m[0]].id,p2:gp[m[1]].name,p2_id:gp[m[1]].id,p3:gp[m[2]].name,p3_id:gp[m[2]].id,p4:gp[m[3]].name,p4_id:gp[m[3]].id,scoreA:'',scoreB:'',saved:false}))});saveToStorage();renderApp();document.getElementById('setupScreen').classList.add('hidden');document.getElementById('mainScreen').classList.remove('hidden')}
 function renderApp(){renderPhase1();renderFinals();updateStandings();checkPhase1Completion();checkFinalsCompletion()}
