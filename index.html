@@ -46,7 +46,7 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 <main id="v"></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const SUPABASE_URL=https://gvnjbkeiwpggfwjmahpt.supabase.co/rest/v1/,SUPABASE_KEY=sb_publishable_G3Qosi2CyZ4Pbcl4S9G1Jw_zFeLVY6-;
+const SUPABASE_URL='https://gvnjbkeiwpggfwjmahpt.supabase.co/rest/v1/',SUPABASE_KEY='sb_publishable_G3Qosi2CyZ4Pbcl4S9G1Jw_zFeLVY6-';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let S={players:[],sel:{},T:null},tab='live',ADMIN=false,CODE='',timer,q=Promise.resolve();
