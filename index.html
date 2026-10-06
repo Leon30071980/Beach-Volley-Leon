@@ -26,7 +26,8 @@ th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--line);font-s
 th{font-size:13px;color:var(--mut);font-weight:600}
 .n{text-align:right;font-variant-numeric:tabular-nums}
 .lead td{font-weight:700}
-input{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%;min-width:90px}
+input,select{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%;min-width:90px}
+select{min-width:60px;cursor:pointer}
 input[type=number]{width:58px;min-width:0;text-align:center}
 .p,.s{border-radius:8px;font:600 15px var(--f);cursor:pointer;padding:10px 16px}
 .p{background:var(--b);color:#fff;border:0}.p:disabled{opacity:.4;cursor:default}
@@ -67,7 +68,18 @@ const med=p=>p.g?p.tot/p.g:0,done=m=>m.s1!==''&&m.s2!==''&&+m.s1!==+m.s2;
 const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const key=p=>[...p].sort().join('-');
 const used=T=>{const s=new Set();T.rounds.forEach(r=>r.matches.forEach(m=>{s.add(key(m.t1));s.add(key(m.t2))}));return s};
-function mk(A,B,u){let best,bs=1e9;for(let i=0;i<300&&bs;i++){const a=sh(A),b=sh(B),p=a.map((x,k)=>[x,b[k]]),sc=p.filter(q=>u.has(key(q))).length;if(sc<bs){bs=sc;best=p}}
+function mk(A,B,u){
+const G={};S.players.forEach(x=>G[x.id]=x.s||'M');
+let best,bs=1e9;
+for(let i=0;i<300&&bs;i++){
+const a=sh(A),b=sh(B),p=a.map((x,k)=>[x,b[k]]);
+let sc=p.filter(q=>u.has(key(q))).length;
+for(let k=0;k<3;k++){
+const m1=(G[p[2*k][0]]=='M'?1:0)+(G[p[2*k][1]]=='M'?1:0);
+const m2=(G[p[2*k+1][0]]=='M'?1:0)+(G[p[2*k+1][1]]=='M'?1:0);
+if((m1==2&&m2==0)||(m1==0&&m2==2))sc+=10;
+}
+if(sc<bs){bs=sc;best=p}}
 const p=sh(best);return{A,matches:[0,1,2].map(k=>({t1:p[2*k],t2:p[2*k+1],s1:'',s2:''}))}}
 function table(){const T=S.T,t={};Object.keys(T.names).forEach(id=>t[id]={id,pt:0,g:0,w:0,pf:0,ps:0});
 T.rounds.forEach(r=>r.matches.forEach(m=>{if(!done(m))return;const a=+m.s1,b=+m.s2;[[m.t1,a,b],[m.t2,b,a]].forEach(([tm,f,s])=>tm.forEach(id=>{const x=t[id];x.g++;x.pf+=f;x.ps+=s;if(f>s){x.pt+=3;x.w++}else if(f>=20)x.pt+=1}))}));
@@ -75,7 +87,7 @@ return Object.values(t).sort((a,b)=>b.pt-a.pt||(b.pf-b.ps)-(a.pf-a.ps)||b.pf-a.p
 function go(t){tab=t;R()}
 function R(){document.getElementById('nav').innerHTML=[['live','Classifica live'],['turni','Turni'],['gruppi','Gruppi'],['generale','Classifica Generale']].filter(x=>ADMIN||x[0]!='gruppi').map(([k,l])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
 document.getElementById('v').innerHTML=({live,turni,gruppi,generale})[tab]();document.getElementById('ab').textContent=ADMIN?'Esci':'Organizzatore';
-if(!ADMIN){setSt('Sola lettura · si aggiorna in automatico');document.querySelectorAll('#v input').forEach(i=>i.disabled=true);document.querySelectorAll('#v button,#v .adm').forEach(e=>e.remove())}}
+if(!ADMIN){setSt('Sola lettura · si aggiorna in automatico');document.querySelectorAll('#v input, #v select').forEach(i=>i.disabled=true);document.querySelectorAll('#v button,#v .adm').forEach(e=>e.remove())}}
 const none=()=>ADMIN?`<div class="card"><h2>Nessun torneo in corso</h2><p>Compila la Classifica Generale, seleziona i 12 giocatori e avvia il torneo.</p><button class="p" onclick="go('gruppi')">Scegli i giocatori</button></div>`:`<div class="card"><h2>Torneo non ancora iniziato</h2><p>La classifica comparirà qui appena parte il primo turno.</p></div>`;
 function live(){const T=S.T;if(!T)return none();const t=table(),last=T.rounds.at(-1);
 return `<p class="mut">Turno ${T.rounds.length} di 5 · ${last.matches.filter(done).length}/3 partite inserite</p><div class="card"><table><tr><th>#</th><th>Giocatore</th><th class="n">Pt</th><th class="n">G</th><th class="n">V</th><th class="n">Diff</th></tr>${t.map((x,i)=>`<tr class="${i?'':'lead'}"><td>${i+1}</td><td><i class="bd ${T.grp[x.id]}">${T.grp[x.id]}</i>${esc(T.names[x.id])}</td><td class="n">${x.pt}</td><td class="n">${x.g}</td><td class="n">${x.w}</td><td class="n">${x.pf-x.ps}</td></tr>`).join('')}</table></div><p class="mut">Vittoria 3 punti · sconfitta con 20 o più punti fatti 1 punto, sotto 20 punti 0. A parità: differenza punti.</p>`}
@@ -87,21 +99,21 @@ return `<div class="card"><div class="mut">Campo ${k+1}</div><div class="m">${te
 return `<div class="row adm">${ctl}</div>`+body.join('')}
 const split=()=>{const ids=S.players.filter(p=>S.sel[p.id]).sort((a,b)=>med(b)-med(a)).map(p=>p.id);return{A:ids.slice(0,6),B:ids.slice(6)}};
 function gruppi(){const P=[...S.players].sort((a,b)=>med(b)-med(a)),n=P.filter(p=>S.sel[p.id]).length,ok=n==12,g=ok?split():null;
-const col=(L,ids)=>`<div><div><i class="bd ${L}">${L}</i><b>Gruppo ${L}</b></div>${ids.map(id=>{const p=S.players.find(x=>x.id==id);return `<div>${esc(p.n)} ${esc(p.c)} <span class="mut">${med(p).toFixed(2)}</span></div>`}).join('')}</div>`;
-return `<div class="card"><p>Seleziona i 12 giocatori della Classifica Generale che partecipano. Il sistema li divide per media: le 6 medie più alte nel gruppo A, le altre 6 nel gruppo B.</p><p><b>${n}/12 selezionati</b></p><div class="row"><button class="s" onclick="selTop()">Seleziona i primi 12</button><button class="s" onclick="S.sel={};save();R()">Azzera</button></div>${P.length<12?'<p class="mut">Servono almeno 12 giocatori nella Classifica Generale.</p>':''}<table>${P.map(p=>`<tr><td style="width:40px"><input type="checkbox" style="width:22px;height:22px;min-width:0" aria-label="Seleziona ${esc(p.n)} ${esc(p.c)}" ${S.sel[p.id]?'checked':''} ${!S.sel[p.id]&&n>=12?'disabled':''} onchange="tg('${p.id}')"></td><td>${esc(p.n)} ${esc(p.c)}</td><td class="n mut">${med(p).toFixed(2)}</td></tr>`).join('')}</table></div>
+const col=(L,ids)=>`<div><div><i class="bd ${L}">${L}</i><b>Gruppo ${L}</b></div>${ids.map(id=>{const p=S.players.find(x=>x.id==id);return `<div>${esc(p.n)}${esc(p.c)} <span class="mut">${med(p).toFixed(2)}</span></div>`}).join('')}</div>`;
+return `<div class="card"><p>Seleziona i 12 giocatori della Classifica Generale che partecipano. Il sistema li divide per media: le 6 medie più alte nel gruppo A, le altre 6 nel gruppo B.</p><p><b>${n}/12 selezionati</b></p><div class="row"><button class="s" onclick="selTop()">Seleziona i primi 12</button><button class="s" onclick="S.sel={};save();R()">Azzera</button></div>${P.length<12?'<p class="mut">Servono almeno 12 giocatori nella Classifica Generale.</p>':''}<table>${P.map(p=>`<tr><td style="width:40px"><input type="checkbox" style="width:22px;height:22px;min-width:0" aria-label="Seleziona ${esc(p.n)} ${esc(p.c)}" ${S.sel[p.id]?'checked':''} ${!S.sel[p.id]&&n>=12?'disabled':''} onchange="tg('${p.id}')"></td><td>${esc(p.n)}${esc(p.c)}</td><td class="n mut">${med(p).toFixed(2)}</td></tr>`).join('')}</table></div>
 ${ok?`<div class="card"><div class="m" style="align-items:start">${col('A',g.A)}<span></span>${col('B',g.B)}</div><div class="row"><button class="p" onclick="start()">Avvia torneo</button></div></div>`:''}`}
-function generale(){const P=[...S.players].sort((a,b)=>med(b)-med(a)),I=(id,f,v,t)=>`<input ${t||''} value="${esc(v)}" onchange="ed('${id}','${f}',this.value)">`;
-return `<div class="card"><table><tr><th>#</th><th>Nome</th><th>Cognome</th><th class="n">Punti</th><th class="n">Partite</th><th class="n">Media</th><th></th></tr>${P.map((p,i)=>`<tr><td>${i+1}</td><td>${I(p.id,'n',p.n)}</td><td>${I(p.id,'c',p.c)}</td><td>${I(p.id,'tot',p.tot,'type="number" min="0"')}</td><td>${I(p.id,'g',p.g,'type="number" min="0"')}</td><td class="n"><b>${med(p).toFixed(2)}</b></td><td><button class="x" aria-label="Elimina" onclick="del('${p.id}')">✕</button></td></tr>`).join('')}</table></div>
-<div class="card adm"><div class="row"><input id="nn" placeholder="Nome"><input id="nc" placeholder="Cognome"><button class="p" onclick="add()">Aggiungi giocatore</button></div><p class="mut">Media = punti totali ÷ partite giocate. Dati di esempio: modificali o eliminali.</p><button class="s" onclick="if(confirm('Eliminare tutti i giocatori e il torneo?')){S={players:[],sel:{},T:null};save();R()}">Svuota tutto</button></div>`}
-function ed(id,f,v){const p=S.players.find(x=>x.id==id);p[f]=(f=='n'||f=='c')?v.trim():Math.max(0,+v||0);save();R()}
+function generale(){const P=[...S.players].sort((a,b)=>med(b)-med(a)),I=(id,f,v,t)=>`<input ${t||''} value="${esc(v)}" onchange="ed('${id}','${f}',this.value)">`,Sel=(id,v)=>`<select onchange="ed('${id}','s',this.value)"><option value="M" ${v=='M'?'selected':''}>M</option><option value="F" ${v=='F'?'selected':''}>F</option></select>`;
+return `<div class="card"><table><tr><th>#</th><th>Nome</th><th>Cognome</th><th>Sesso</th><th class="n">Punti</th><th class="n">Partite</th><th class="n">Media</th><th></th></tr>${P.map((p,i)=>`<tr><td>${i+1}</td><td>${I(p.id,'n',p.n)}</td><td>${I(p.id,'c',p.c)}</td><td>${Sel(p.id,p.s||'M')}</td><td>${I(p.id,'tot',p.tot,'type="number" min="0"')}</td><td>${I(p.id,'g',p.g,'type="number" min="0"')}</td><td class="n"><b>${med(p).toFixed(2)}</b></td><td><button class="x" aria-label="Elimina" onclick="del('${p.id}')">✕</button></td></tr>`).join('')}</table></div>
+<div class="card adm"><div class="row"><input id="nn" placeholder="Nome" style="flex:1"><input id="nc" placeholder="Cognome" style="flex:1"><select id="ns" style="width:auto"><option value="M">M</option><option value="F">F</option></select><button class="p" onclick="add()">Aggiungi</button></div><p class="mut">Media = punti totali ÷ partite giocate.</p><button class="s" onclick="if(confirm('Eliminare tutti i giocatori e il torneo?')){S={players:[],sel:{},T:null};save();R()}">Svuota tutto</button></div>`}
+function ed(id,f,v){const p=S.players.find(x=>x.id==id);p[f]=(f=='n'||f=='c'||f=='s')?v.trim():Math.max(0,+v||0);save();R()}
 function del(id){S.players=S.players.filter(x=>x.id!=id);delete S.sel[id];save();R()}
-function add(){const n=nn.value.trim(),c=nc.value.trim();if(!n)return;S.players.push({id:'p'+Date.now().toString(36),n,c,tot:0,g:0});save();R()}
+function add(){const n=nn.value.trim(),c=nc.value.trim(),s=ns.value;if(!n)return;S.players.push({id:'p'+Date.now().toString(36),n,c,s,tot:0,g:0});save();R()}
 function tg(id){if(S.sel[id])delete S.sel[id];else if(Object.keys(S.sel).length<12)S.sel[id]=1;save();R()}
 function selTop(){S.sel={};[...S.players].sort((a,b)=>med(b)-med(a)).slice(0,12).forEach(p=>S.sel[p.id]=1);save();R()}
 function start(){if(S.T&&!confirm('Il torneo in corso verrà azzerato. Continuare?'))return;const g=split(),names={},grp={};g.A.forEach(id=>grp[id]='A');g.B.forEach(id=>grp[id]='B');S.players.forEach(p=>{if(grp[p.id])names[p.id]=p.n+' '+(p.c||'').charAt(0)+'.'});
 S.T={names,grp,applied:false,rounds:[mk(g.A,g.B,new Set())]};save();go('turni')}
 function sc(i,k,f,v){S.T.rounds[i].matches[k][f]=v===''?'':Math.max(0,Math.floor(+v));save();R()}
 function nxt(){const T=S.T,W=[],L=[];T.rounds.at(-1).matches.forEach(m=>{const w=+m.s1>+m.s2;(w?m.t1:m.t2).forEach(x=>W.push(x));(w?m.t2:m.t1).forEach(x=>L.push(x))});T.rounds.push(mk(W,L,used(T)));save();R()}
-function applyG(){table().forEach(x=>{const p=S.players.find(q=>q.id==x.id);if(p){p.tot+=x.pt;p.g+=x.g}});S.T.applied=true;save();go('generale')}
+function applyG.forEach(x=>{const p=S.players.find(q=>q.id==x.id);if(p){p.tot+=x.pt;p.g+=x.g}});S.T.applied=true;save();go('generale')}
 init();
 </script></body></html>
