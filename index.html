@@ -89,7 +89,7 @@ function R(){document.getElementById('nav').innerHTML=[['live','Classifica live'
 document.getElementById('v').innerHTML=({live,turni,gruppi,generale})[tab]();document.getElementById('ab').textContent=ADMIN?'Esci':'Organizzatore';
 if(!ADMIN){setSt('Sola lettura · si aggiorna in automatico');document.querySelectorAll('#v input, #v select').forEach(i=>i.disabled=true);document.querySelectorAll('#v button,#v .adm').forEach(e=>e.remove())}}
 const none=()=>ADMIN?`<div class="card"><h2>Nessun torneo in corso</h2><p>Compila la Classifica Generale, seleziona i 12 giocatori e avvia il torneo.</p><button class="p" onclick="go('gruppi')">Scegli i giocatori</button></div>`:`<div class="card"><h2>Torneo non ancora iniziato</h2><p>La classifica comparirà qui appena parte il primo turno.</p></div>`;
-function live(){const T=S.T;if(!T)return none();const t=table(),last=T.rounds.at(-1);
+function live(){const T=S.T;if(!T)return none();const t=table(),last=T.rounds[T.rounds.length-1];
 return `<p class="mut">Turno ${T.rounds.length} di 5 · ${last.matches.filter(done).length}/3 partite inserite</p><div class="card"><table><tr><th>#</th><th>Giocatore</th><th class="n">Pt</th><th class="n">G</th><th class="n">V</th><th class="n">Diff</th></tr>${t.map((x,i)=>`<tr class="${i?'':'lead'}"><td>${i+1}</td><td><i class="bd ${T.grp[x.id]}">${T.grp[x.id]}</i>${esc(T.names[x.id])}</td><td class="n">${x.pt}</td><td class="n">${x.g}</td><td class="n">${x.w}</td><td class="n">${x.pf-x.ps}</td></tr>`).join('')}</table></div><p class="mut">Vittoria 3 punti · sconfitta con 20 o più punti fatti 1 punto, sotto 20 punti 0. A parità: differenza punti.</p>`}
 const team=(T,r,tm)=>`<div class="t">${tm.map(id=>{const g=r.A.includes(id)?'A':'B';return `<span><i class="bd ${g}">${g}</i>${esc(T.names[id])}</span>`}).join('')}</div>`;
 function turni(){const T=S.T;if(!T)return none();const n=T.rounds.length,last=T.rounds[n-1],ld=last.matches.every(done);
@@ -113,7 +113,7 @@ function selTop(){S.sel={};[...S.players].sort((a,b)=>med(b)-med(a)).slice(0,12)
 function start(){if(S.T&&!confirm('Il torneo in corso verrà azzerato. Continuare?'))return;const g=split(),names={},grp={};g.A.forEach(id=>grp[id]='A');g.B.forEach(id=>grp[id]='B');S.players.forEach(p=>{if(grp[p.id])names[p.id]=p.n+' '+(p.c||'').charAt(0)+'.'});
 S.T={names,grp,applied:false,rounds:[mk(g.A,g.B,new Set())]};save();go('turni')}
 function sc(i,k,f,v){S.T.rounds[i].matches[k][f]=v===''?'':Math.max(0,Math.floor(+v));save();R()}
-function nxt(){const T=S.T,W=[],L=[];T.rounds.at(-1).matches.forEach(m=>{const w=+m.s1>+m.s2;(w?m.t1:m.t2).forEach(x=>W.push(x));(w?m.t2:m.t1).forEach(x=>L.push(x))});T.rounds.push(mk(W,L,used(T)));save();R()}
+function nxt(){const T=S.T,W=[],L=[];T.rounds[T.rounds.length-1].matches.forEach(m=>{const w=+m.s1>+m.s2;(w?m.t1:m.t2).forEach(x=>W.push(x));(w?m.t2:m.t1).forEach(x=>L.push(x))});T.rounds.push(mk(W,L,used(T)));save();R()}
 function applyG.forEach(x=>{const p=S.players.find(q=>q.id==x.id);if(p){p.tot+=x.pt;p.g+=x.g}});S.T.applied=true;save();go('generale')}
 init();
 </script></body></html>
