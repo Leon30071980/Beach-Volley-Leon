@@ -81,8 +81,15 @@ async function init(){
   const{data}=await sb.auth.getSession();
   await setAuth(data.session?.user||null);
   sb.auth.onAuthStateChange(async(_event,session)=>{await setAuth(session?.user||null)});
-  sb.channel('torneo').on('postgres_changes',{event:'*',schema:'public',table:'torneo_stato'},p=>{if(p.new&&p.new.data){S=norm(p.new.data);R()}}).subscribe();
-  setInterval(async()=>{if(await fetchState())R()},30000)
+  sb.channel('torneo').on('postgres_changes',{event:'*',schema:'public',table:'torneo_stato'},p=>{
+    // Gli aggiornamenti realtime servono agli utenti, ma l'Admin non deve
+    // sovrascrivere le modifiche locali mentre sta editando la classifica.
+    if(!ADMIN&&p.new&&p.new.data){S=norm(p.new.data);R()}
+  }).subscribe();
+  setInterval(async()=>{
+    // Anche il polling non deve sovrascrivere lo stato locale dell'Admin.
+    if(!ADMIN&&await fetchState())R()
+  },30000)
 }
 const med=p=>p.t?p.tot/p.t:0,done=m=>m.s1!==''&&m.s2!==''&&+m.s1!==+m.s2;
 const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
