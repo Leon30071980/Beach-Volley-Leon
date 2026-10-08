@@ -83,7 +83,9 @@ async function setAuth(user){
   if(error||!data){await sb.auth.signOut();AUTH=null;ROLE='NONE';ADMIN=false;setSt('Ruolo non configurato',true);alert('Utente autenticato ma ruolo non configurato in Supabase.');R();return}
   ROLE=String(data).toUpperCase();ADMIN=ROLE==='ADMIN';
   if(ROLE!=='ADMIN'&&ROLE!=='USER'){await sb.auth.signOut();AUTH=null;ROLE='NONE';ADMIN=false;setSt('Ruolo non valido',true);R();return}
-  await fetchState();tab=S.T?'live':'gruppi';R();
+  await fetchState();
+  if(ADMIN && S.T && !S.T.applied && S.T.review!=='rejected' && S.T.rounds?.length===5 && S.T.rounds[4]?.matches?.every(done)){tab='aggiorna';}else tab=S.T?'live':'gruppi';
+  R();
 }
 async function init(){
   R();
@@ -239,7 +241,7 @@ function sc(i,k,f,v){
     S.T.rounds[i].matches[k][f]=Number.isFinite(n)?Math.max(0,Math.floor(n)):'';
   }
   save();
-  if(S.T.rounds.length===5 && S.T.rounds[4].matches.every(done)){ go('live'); return; }
+  if(S.T.rounds.length===5 && S.T.rounds[4].matches.every(done)){ S.T.review='pending'; save(); go('live'); return; }
   R();
 }
 function nxt(){
@@ -271,8 +273,22 @@ function aggiorna(){
   const last=T.rounds[T.rounds.length-1];
   if(T.rounds.length<5 || !last.matches.every(done))return `<div class="card"><h2>Aggiornamento classifica generale</h2><p>Prima devono essere completati tutti i risultati del quinto turno.</p></div>`;
   if(T.applied)return `<div class="card"><h2>Classifica Generale già aggiornata</h2><p>Questo torneo è già stato contabilizzato.</p></div>`;
+  if(T.review==='rejected')return `<div class="card"><h2>Aggiornamento classifica rifiutato</h2><p>La proposta non è stata applicata. È possibile riproporla dalla Classifica live.</p><button class="p" onclick="proponiAggiornamento()">Riproporre aggiornamento</button></div>`;
   const rows=updateRows();
-  return `<div class="card"><h2>Aggiorna classifica generale</h2><p>Questa è un'anteprima delle modifiche che verranno applicate. I valori con <b>+</b> indicano ciò che verrà aggiunto alla classifica.</p><div class="previewbox"><table><tr><th>Giocatore</th><th class="n">Punti attuali</th><th class="n">Variazione</th><th class="n">Tornei attuali</th><th class="n">Nuovi tornei</th><th class="n">Nuova media</th></tr>${rows.map(r=>`<tr><td><span class="sexname ${r.sex=='F'?'F':'M'}">${esc(r.name)} ${esc(r.surname)}</span></td><td class="n">${r.oldTot}</td><td class="n"><b class="updateplus">+${r.addPt}</b></td><td class="n">${r.oldT}</td><td class="n"><b class="updateplus">+${r.addT}</b></td><td class="n"><b>${r.newMed.toFixed(2)}</b></td></tr>`).join('')}</table></div>${ADMIN?`<div class="row"><button class="p" onclick="confirmUpdate()">Conferma e aggiorna classifica</button><button class="s" onclick="go('turni')">Annulla</button></div>`:`<p class="mut">Proposta pronta. Solo l'Admin può confermare e applicare queste modifiche.</p>`}</div>`;
+  return `<div class="card"><h2>Aggiorna classifica generale</h2><p>Questa è un'anteprima delle modifiche che verranno applicate. I valori con <b>+</b> indicano ciò che verrà aggiunto alla classifica.</p><div class="previewbox"><table><tr><th>Giocatore</th><th class="n">Punti attuali</th><th class="n">Variazione</th><th class="n">Tornei attuali</th><th class="n">Nuovi tornei</th><th class="n">Nuova media</th></tr>${rows.map(r=>`<tr><td><span class="sexname ${r.sex=='F'?'F':'M'}">${esc(r.name)} ${esc(r.surname)}</span></td><td class="n">${r.oldTot}</td><td class="n"><b class="updateplus">+${r.addPt}</b></td><td class="n">${r.oldT}</td><td class="n"><b class="updateplus">+${r.addT}</b></td><td class="n"><b>${r.newMed.toFixed(2)}</b></td></tr>`).join('')}</table></div>${ADMIN?`<div class="row"><button class="p" onclick="confirmUpdate()">Conferma e aggiorna classifica</button><button class="s" onclick="rejectUpdate()">Rifiuta proposta</button></div>`:`<p class="mut">Proposta pronta. Solo l'Admin può confermare e applicare queste modifiche.</p>`}</div>`;
+}
+function rejectUpdate(){
+  if(!ADMIN || !S.T || S.T.applied)return;
+  if(!confirm('Rifiutare la proposta di aggiornamento della Classifica Generale?'))return;
+  S.T.review='rejected';
+  save();
+  go('live');
+}
+function proponiAggiornamento(){
+  if(!S.T || S.T.applied)return;
+  S.T.review='pending';
+  save();
+  go('aggiorna');
 }
 function confirmUpdate(){
   if(!ADMIN || !S.T || S.T.applied)return;
@@ -280,6 +296,7 @@ function confirmUpdate(){
   if(!confirm("Confermare l'aggiornamento della Classifica Generale per tutti i "+rows.length+" giocatori?"))return;
   rows.forEach(r=>{const p=S.players.find(q=>q.id==r.id);if(p){p.tot=r.newTot;p.t=r.newT}});
   S.T.applied=true;
+  S.T.review='approved';
   save();
   go('generale');
 }
