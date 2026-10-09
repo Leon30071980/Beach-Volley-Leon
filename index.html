@@ -42,10 +42,24 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 .seg .A.on{background:var(--a);border-color:var(--a);color:#0b2a33}.seg .B.on{background:var(--b);border-color:var(--b);color:#fff}
 .updateplus{color:#1976d2;font-weight:800;white-space:nowrap}.updateneg{color:#e78ab3;font-weight:800;white-space:nowrap}.previewbox{border:2px solid var(--b);border-radius:10px;padding:12px;margin-top:12px}.public{display:inline-block}.x{background:none;border:0;color:var(--mut);cursor:pointer;font-size:16px}
 .user-hidden{display:none!important}
+.login-overlay{position:fixed;inset:0;z-index:20;background:#0009;display:none;align-items:center;justify-content:center;padding:18px}.login-overlay.open{display:flex}.login-card{width:100%;max-width:380px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 12px 40px #0003}.login-card label{display:block;font-weight:600;margin:12px 0 5px}.login-card input{min-width:0;padding:11px}.login-card .row button{flex:1}
 :focus-visible{outline:2px solid var(--b);outline-offset:2px}
 </style></head><body>
 <header><div class="in"><h1>Torneo Leon</h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
 <main id="v"></main>
+<div id="loginOverlay" class="login-overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="login-card">
+    <h2 id="loginTitle" style="margin-top:0">Accedi al Torneo Leon</h2>
+    <form id="loginForm" onsubmit="submitLogin(event)" autocomplete="on">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" name="username" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="nome@esempio.it">
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Password">
+      <div class="row"><button class="p" id="loginSubmit" type="submit">Accedi</button><button class="s" type="button" onclick="closeLogin()">Annulla</button></div>
+      <p class="mut">Il browser può proporre gli account già salvati e compilare i campi automaticamente.</p>
+    </form>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 const SUPABASE_URL='https://gvnjbkeiwpggfwjmahpt.supabase.co',SUPABASE_KEY='sb_publishable_G3Qosi2CyZ4Pbcl4S9G1Jw_zFeLVY6-';
@@ -69,11 +83,28 @@ async function login(){
     R();
     return;
   }
-  const email=prompt('Email:');if(!email)return;
-  const password=prompt('Password:');if(!password)return;
-  setSt('Accesso…');
-  const{data,error}=await sb.auth.signInWithPassword({email:email.trim(),password});
-  if(error){setSt('Accesso negato',true);alert('Email o password non corretti.');return}
+  openLogin();
+}
+function openLogin(){
+  const o=document.getElementById('loginOverlay');
+  o.classList.add('open');
+  setTimeout(()=>document.getElementById('loginEmail')?.focus(),50);
+}
+function closeLogin(){
+  document.getElementById('loginOverlay').classList.remove('open');
+}
+async function submitLogin(event){
+  event.preventDefault();
+  const email=document.getElementById('loginEmail').value.trim();
+  const password=document.getElementById('loginPassword').value;
+  const button=document.getElementById('loginSubmit');
+  if(!email||!password)return;
+  button.disabled=true;button.textContent='Accesso…';setSt('Accesso…');
+  const{data,error}=await sb.auth.signInWithPassword({email,password});
+  button.disabled=false;button.textContent='Accedi';
+  if(error){setSt('Accesso negato',true);alert('Email o password non corretti.');document.getElementById('loginPassword').select();return}
+  closeLogin();
+  document.getElementById('loginPassword').value='';
   await setAuth(data.user);
 }
 async function setAuth(user){
