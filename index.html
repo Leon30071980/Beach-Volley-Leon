@@ -45,7 +45,7 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 .login-overlay{position:fixed;inset:0;z-index:20;background:#0009;display:none;align-items:center;justify-content:center;padding:18px}.login-overlay.open{display:flex}.login-card{width:100%;max-width:380px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 12px 40px #0003}.login-card label{display:block;font-weight:600;margin:12px 0 5px}.login-card input{min-width:0;padding:11px}.login-card .row button{flex:1}
 :focus-visible{outline:2px solid var(--b);outline-offset:2px}
 </style></head><body>
-<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.17.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
+<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.18.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
 <main id="v"></main>
 <div id="loginOverlay" class="login-overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-card">
@@ -65,7 +65,18 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 const SUPABASE_URL='https://gvnjbkeiwpggfwjmahpt.supabase.co',SUPABASE_KEY='sb_publishable_G3Qosi2CyZ4Pbcl4S9G1Jw_zFeLVY6-';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let S={players:[],sel:{},T:null,mode:3},tab='live',ROLE='NONE',ADMIN=false,AUTH=null,timer,q=Promise.resolve();
+// Conserva soltanto la sezione visitata, mai dati del torneo o credenziali.
+const LAST_TAB_KEY='beach-volley-leon:last-tab';
+const TAB_NAMES=['live','turni','gruppi','generale','aggiorna'];
+function lastTab(){
+  try{const t=localStorage.getItem(LAST_TAB_KEY);return TAB_NAMES.includes(t)?t:null}
+  catch(_){return null}
+}
+function rememberTab(t){
+  if(!TAB_NAMES.includes(t))return;
+  try{localStorage.setItem(LAST_TAB_KEY,t)}catch(_){}
+}
+let S={players:[],sel:{},T:null,mode:3},tab=lastTab()||'live',ROLE='NONE',ADMIN=false,AUTH=null,timer,q=Promise.resolve();
 let sorts={generale:{key:'med',dir:-1},gruppi:{key:'med',dir:-1}};
 const norm=d=>{d=d&&typeof d=='object'?d:{};const players=(d.players||[]).map(p=>{const oldG=Number.isFinite(+p.g)?+p.g:0;const t=Number.isFinite(+p.t)?+p.t:Math.floor(oldG/5);return{...p,t}});return{players,sel:d.sel||{},T:d.T||null,mode:d.mode||d.T?.mode||3}};
 function setSt(t,err){const e=document.getElementById('st');if(e){e.textContent=t;e.style.color=err?'#c0392b':''}}
@@ -76,7 +87,7 @@ let loggingOut=false;
 function clearLocalAuth(){
   AUTH=null; ROLE='NONE'; ADMIN=false;
   clearTimeout(timer);
-  tab=S.T?'live':'gruppi';
+  // Il logout non deve cambiare la pagina che l'utente stava consultando.
   R();
   setSt('Accesso richiesto');
 }
@@ -131,7 +142,16 @@ async function setAuth(user){
   ROLE=String(data).toUpperCase();ADMIN=ROLE==='ADMIN';
   if(ROLE!=='ADMIN'&&ROLE!=='USER'){await sb.auth.signOut();AUTH=null;ROLE='NONE';ADMIN=false;setSt('Ruolo non valido',true);R();return}
   await fetchState();
-  if(ADMIN && S.T && !S.T.applied && S.T.review!=='rejected' && S.T.rounds?.length===5 && S.T.rounds[4]?.matches?.every(done)){tab='aggiorna';}else tab=S.T?'live':'gruppi';
+  const proposalPending=S.T && !S.T.applied && S.T.review!=='rejected' &&
+    S.T.rounds?.length===5 && S.T.rounds[4]?.matches?.every(done);
+  // Eccezione: una proposta in attesa va subito mostrata all'amministratore.
+  if(ADMIN && proposalPending){
+    tab='aggiorna';
+  }else{
+    const preferred=lastTab();
+    tab=(preferred==='aggiorna' && !proposalPending ? null : preferred) ||
+      (S.T?'live':'gruppi');
+  }
   R();
 }
 async function init(){
@@ -144,6 +164,8 @@ async function init(){
       if(event==='SIGNED_OUT')clearLocalAuth();
       return;
     }
+    // Un refresh del token non deve riportare la navigazione alla pagina iniziale.
+    if(session?.user?.id===AUTH?.id && ROLE!=='NONE')return;
     setTimeout(()=>{if(!loggingOut)setAuth(session?.user||null).catch(console.error)},0);
   });
   sb.channel('torneo').on('postgres_changes',{event:'*',schema:'public',table:'torneo_stato'},p=>{
@@ -256,7 +278,7 @@ function mkFinals(){
 function table(){const T=S.T,t={};Object.keys(T.names).forEach(id=>t[id]={id,pt:0,g:0,w:0,pf:0,ps:0});
 T.rounds.forEach(r=>r.matches.forEach(m=>{if(!done(m))return;const a=+m.s1,b=+m.s2;[[m.t1,a,b],[m.t2,b,a]].forEach(([tm,f,s])=>tm.forEach(id=>{const x=t[id];x.g++;x.pf+=f;x.ps+=s;if(f>s){x.pt+=3;x.w++}else if(f>=20)x.pt+=1}))}));
 return Object.values(t).sort((a,b)=>b.pt-a.pt||(b.pf-b.ps)-(a.pf-a.ps)||b.pf-a.pf)}
-function go(t){tab=t;R()}
+function go(t){if(!TAB_NAMES.includes(t))return;tab=t;rememberTab(t);R()}
 function sortBy(view,key){
   const x=sorts[view]||{};
   if(x.key===key)x.dir*=-1;else{ x.key=key;x.dir=key==='n'||key==='c'||key==='s'?1:-1 }
