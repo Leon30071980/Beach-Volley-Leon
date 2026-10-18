@@ -45,7 +45,7 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 .login-overlay{position:fixed;inset:0;z-index:20;background:#0009;display:none;align-items:center;justify-content:center;padding:18px}.login-overlay.open{display:flex}.login-card{width:100%;max-width:380px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 12px 40px #0003}.login-card label{display:block;font-weight:600;margin:12px 0 5px}.login-card input{min-width:0;padding:11px}.login-card .row button{flex:1}
 :focus-visible{outline:2px solid var(--b);outline-offset:2px}
 </style></head><body>
-<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.16.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
+<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.17.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
 <main id="v"></main>
 <div id="loginOverlay" class="login-overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-card">
@@ -229,8 +229,9 @@ function mk(A,B,u){
   return {A:[...A],matches:sh(best).map(([t1,t2])=>({t1,t2,s1:'',s2:''}))};
 }
 // Finali: i quattro classificati di ogni fascia rimangono nello stesso campo.
-// Tra le tre possibili divisioni in coppie, prima si evita di ripetere compagni,
-// poi si evita FF contro MM, poi si minimizzano gli avversari ripetuti.
+// Tra le tre possibili divisioni in coppie, prima si evita FF contro MM,
+// poi si minimizzano le ripetizioni di compagni: se inevitabili, sono ammesse
+// soltanto nel quinto turno. A parita, prevale la disposizione per classifica.
 function mkFinals(){
   const ranked=table().map(x=>x.id),u=used(S.T),opp=priorOpponents(),matches=[];
   if(ranked.length!==12)throw new Error('Le finali richiedono 12 giocatori in classifica.');
@@ -245,8 +246,8 @@ function mkFinals(){
       repeated:Number(u.has(key(t1)))+Number(u.has(key(t2))),
       clash:Number(genderClash(t1,t2)),
       opponents:opponentCost(t1,t2,opp)
-    })).filter(x=>x.repeated===0).sort((a,b)=>a.clash-b.clash||a.index-b.index||a.opponents-b.opponents);
-    if(!valid.length)throw new Error('Finale '+(k+1)+': impossibile formare coppie senza ripetere compagni.');
+    })).sort((a,b)=>a.clash-b.clash||a.repeated-b.repeated||a.index-b.index||a.opponents-b.opponents);
+    // Anche se tutti e tre gli abbinamenti ripetono compagni, la finale si gioca.
     const chosen=valid[0];
     matches.push({t1:chosen.t1,t2:chosen.t2,s1:'',s2:''});
   }
