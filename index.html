@@ -45,7 +45,7 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 .login-overlay{position:fixed;inset:0;z-index:20;background:#0009;display:none;align-items:center;justify-content:center;padding:18px}.login-overlay.open{display:flex}.login-card{width:100%;max-width:380px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 12px 40px #0003}.login-card label{display:block;font-weight:600;margin:12px 0 5px}.login-card input{min-width:0;padding:11px}.login-card .row button{flex:1}
 :focus-visible{outline:2px solid var(--b);outline-offset:2px}
 </style></head><body>
-<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.15.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
+<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.16.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
 <main id="v"></main>
 <div id="loginOverlay" class="login-overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-card">
@@ -180,48 +180,77 @@ function resetTournament(){
   save();
   go('gruppi');
 }
-function mk(A,B,u){
-  const C=cfg(),G={};
-  S.players.forEach(x=>G[x.id]=x.s||'M');
+// Penalità di genere: FF contro MM non deve essere generato se evitabile.
+function genderClash(t1,t2){
+  const sex=id=>S.players.find(p=>p.id===id)?.s||'M';
+  const f1=t1.filter(id=>sex(id)==='F').length;
+  const f2=t2.filter(id=>sex(id)==='F').length;
+  return (f1===2&&f2===0)||(f1===0&&f2===2);
+}
+function priorOpponents(){
   const opp=new Set();
-  for(const r of (S.T?.rounds||[])){
-    for(const m of r.matches){
-      for(const a of m.t1) for(const b of m.t2){opp.add(a+'|'+b);opp.add(b+'|'+a)}
-    }
-  }
+  for(const r of (S.T?.rounds||[]))for(const m of r.matches)
+    for(const a of m.t1)for(const b of m.t2){opp.add(a+'|'+b);opp.add(b+'|'+a)}
+  return opp;
+}
+function opponentCost(t1,t2,opp){
+  let n=0;for(const a of t1)for(const b of t2)if(opp.has(a+'|'+b))n++;
+  return n;
+}
+function mk(A,B,u){
+  const C=cfg(),opp=priorOpponents();
   let best=null,bestScore=Infinity;
-  const tries=220;
-  for(let z=0;z<tries;z++){
+  // Ricerca casuale di squadre AB con compagni mai ripetuti.
+  // Le disposizioni dei campi sono enumerate per non trascurare le alternative.
+  function matchings(pairs){
+    if(!pairs.length)return [[]];
+    const first=pairs[0],out=[];
+    for(let j=1;j<pairs.length;j++){
+      const rest=pairs.filter((_,k)=>k!==0&&k!==j);
+      for(const tail of matchings(rest))out.push([[first,pairs[j]],...tail]);
+    }
+    return out;
+  }
+  for(let z=0;z<1200;z++){
     const a=sh(A),b=sh(B),pairs=a.map((x,k)=>[x,b[k]]);
     if(pairs.some(q=>u.has(key(q))))continue;
-    for(let j=0;j<60;j++){
-      const order=sh(pairs);let score=0;
-      for(let k=0;k<C.matches;k++){
-        const t1=order[2*k],t2=order[2*k+1];
-        const m1=(G[t1[0]]=='M'?1:0)+(G[t1[1]]=='M'?1:0);
-        const m2=(G[t2[0]]=='M'?1:0)+(G[t2[1]]=='M'?1:0);
-        const ff1=m1===0,ff2=m2===0;
-        if(ff1!==ff2)score+=1000;
-        if((m1===2&&m2===0)||(m1===0&&m2===2))score+=1000;
-        for(const x of t1)for(const y of t2)if(opp.has(x+'|'+y))score+=3;
+    for(const arrangement of matchings(pairs)){
+      let clashes=0,repeats=0;
+      for(const [t1,t2] of arrangement){
+        if(genderClash(t1,t2))clashes++;
+        repeats+=opponentCost(t1,t2,opp);
       }
-      if(score<bestScore){bestScore=score;best=order;if(score===0)break}
+      const score=clashes*100000+repeats*3;
+      if(score<bestScore){bestScore=score;best=arrangement;if(score===0)break}
     }
     if(bestScore===0)break;
   }
-  if(!best){
-    const a=sh(A),candidates=[];
-    function bt(i,remaining,pairs){
-      if(i===a.length){candidates.push([...pairs]);return true}
-      const ai=a[i],opts=sh(remaining).filter(b=>!u.has(key([ai,b])));
-      for(const b of opts){const nr=remaining.filter(x=>x!==b);pairs.push([ai,b]);if(bt(i+1,nr,pairs))return true;pairs.pop()}
-      return false;
-    }
-    bt(0,[...B],[]);if(candidates.length)best=candidates[0];
+  if(!best)throw new Error('Impossibile generare il turno senza ripetere una coppia di compagni.');
+  return {A:[...A],matches:sh(best).map(([t1,t2])=>({t1,t2,s1:'',s2:''}))};
+}
+// Finali: i quattro classificati di ogni fascia rimangono nello stesso campo.
+// Tra le tre possibili divisioni in coppie, prima si evita di ripetere compagni,
+// poi si evita FF contro MM, poi si minimizzano gli avversari ripetuti.
+function mkFinals(){
+  const ranked=table().map(x=>x.id),u=used(S.T),opp=priorOpponents(),matches=[];
+  if(ranked.length!==12)throw new Error('Le finali richiedono 12 giocatori in classifica.');
+  for(let k=0;k<3;k++){
+    const p=ranked.slice(k*4,k*4+4);
+    const candidates=[
+      [[p[0],p[2]],[p[1],p[3]]],
+      [[p[0],p[1]],[p[2],p[3]]],
+      [[p[0],p[3]],[p[1],p[2]]]
+    ];
+    const valid=candidates.map(([t1,t2],index)=>({t1,t2,index,
+      repeated:Number(u.has(key(t1)))+Number(u.has(key(t2))),
+      clash:Number(genderClash(t1,t2)),
+      opponents:opponentCost(t1,t2,opp)
+    })).filter(x=>x.repeated===0).sort((a,b)=>a.clash-b.clash||a.index-b.index||a.opponents-b.opponents);
+    if(!valid.length)throw new Error('Finale '+(k+1)+': impossibile formare coppie senza ripetere compagni.');
+    const chosen=valid[0];
+    matches.push({t1:chosen.t1,t2:chosen.t2,s1:'',s2:''});
   }
-  if(!best)throw new Error('Impossibile generare il turno senza ripetere una coppia di partner.');
-  const p=sh(best);
-  return{A,matches:Array.from({length:C.matches},(_,k)=>({t1:p[2*k],t2:p[2*k+1],s1:'',s2:''}))};
+  return {A:[],finals:true,rankAfter4:ranked,matches};
 }
 function table(){const T=S.T,t={};Object.keys(T.names).forEach(id=>t[id]={id,pt:0,g:0,w:0,pf:0,ps:0});
 T.rounds.forEach(r=>r.matches.forEach(m=>{if(!done(m))return;const a=+m.s1,b=+m.s2;[[m.t1,a,b],[m.t2,b,a]].forEach(([tm,f,s])=>tm.forEach(id=>{const x=t[id];x.g++;x.pf+=f;x.ps+=s;if(f>s){x.pt+=3;x.w++}else if(f>=20)x.pt+=1}))}));
@@ -261,11 +290,11 @@ function R(){
 const none=()=>`<div class="card"><h2>Nessun torneo in corso</h2><p>Scegli la modalità, seleziona i giocatori e avvia il torneo.</p><button class="p" onclick="go('gruppi')">Scegli i giocatori</button></div>`;
 function live(){const T=S.T;if(!T)return none();const t=table(),last=T.rounds[T.rounds.length-1];
 return `<p class="mut">Turno ${T.rounds.length} di 5 · ${last.matches.filter(done).length}/${last.matches.length} partite inserite</p><div class="card"><table><tr><th>#</th><th>Giocatore</th><th class="n">Pt</th><th class="n">G</th><th class="n">V</th><th class="n">Diff</th></tr>${t.map((x,i)=>`<tr class="${i?'':'lead'}"><td>${i+1}</td><td><i class="bd ${T.grp[x.id]}">${T.grp[x.id]}</i><span class="sexname ${S.players.find(p=>p.id==x.id)?.s=='F'?'F':'M'}">${esc(T.names[x.id])}</span></td><td class="n">${x.pt}</td><td class="n">${x.g}</td><td class="n">${x.w}</td><td class="n">${x.pf-x.ps}</td></tr>`).join('')}</table></div><p class="mut">Vittoria 3 punti · sconfitta con 20 o più punti fatti 1 punto, sotto 20 punti 0. A parità: differenza punti.</p>${T.rounds.length===5&&last.matches.every(done)&&!T.applied?`<div class="row"><button class="p public" onclick="go('aggiorna')">Aggiorna classifica generale</button></div>`:T.rounds.length===5&&last.matches.every(done)&&T.applied?`<p class="mut">Classifica Generale già aggiornata con questo torneo.</p>`:''}`}
-const team=(T,r,tm)=>`<div class="t">${tm.map(id=>{const g=r.A.includes(id)?'A':'B';const p=S.players.find(x=>x.id==id);const sex=p?.s=='F'?'F':'M';return `<span><i class="bd ${g}">${g}</i><span class="sexname ${sex}">${esc(T.names[id])}</span></span>`}).join('')}</div>`;
+const team=(T,r,tm)=>`<div class="t">${tm.map(id=>{const g=r.finals?'':r.A.includes(id)?'A':'B';const p=S.players.find(x=>x.id==id);const sex=p?.s=='F'?'F':'M';return `<span>${g?`<i class="bd ${g}">${g}</i>`:""}<span class="sexname ${sex}">${esc(T.names[id])}</span></span>`}).join('')}</div>`;
 function turni(){const T=S.T;if(!T)return none();const C=cfg(),n=T.rounds.length,last=T.rounds[n-1],ld=last.matches.every(done);
 let ctl=n<5?`<button class="p" ${ld?'':'disabled'} onclick="nxt()">Genera turno ${n+1}</button>`:ld?(T.applied?`<p class="mut">Classifica Generale già aggiornata con questo torneo.</p>`:''):'';
-const body=T.rounds.map((r,i)=>`<h2>Turno ${i+1}</h2>`+r.matches.map((m,k)=>{const lk=i<n-1?'disabled':'',d=done(m),tie=m.s1!==''&&m.s2!==''&&+m.s1===+m.s2;
-return `<div class="card"><div class="mut">Campo ${k+1}</div><div class="m">${team(T,r,m.t1)}<div class="sc"><input type="number" min="0" inputmode="numeric" value="${m.s1}" ${lk} aria-label="Punti squadra 1" onchange="sc(${i},${k},'s1',this.value)">–<input type="number" min="0" inputmode="numeric" value="${m.s2}" ${lk} aria-label="Punti squadra 2" onchange="sc(${i},${k},'s2',this.value)"></div>${team(T,r,m.t2)}</div>${tie?'<div class="mut">Il pareggio non è ammesso: correggi il punteggio.</div>':''}${d?`<div class="mut">Vincitori 3 pt · sconfitti ${Math.min(+m.s1,+m.s2)>=20?1:0} pt</div>`:''}</div>`}).join('')).reverse();
+const body=T.rounds.map((r,i)=>`<h2>${r.finals?"Finali · 5° turno":"Turno "+(i+1)}</h2>`+r.matches.map((m,k)=>{const lk=i<n-1?'disabled':'',d=done(m),tie=m.s1!==''&&m.s2!==''&&+m.s1===+m.s2;
+return `<div class="card"><div class="mut">${r.finals?((k+1)+"ª finale · "+(k*4+1)+"°–"+(k*4+4)+"° posto dopo 4 turni"):"Campo "+(k+1)}</div><div class="m">${team(T,r,m.t1)}<div class="sc"><input type="number" min="0" inputmode="numeric" value="${m.s1}" ${lk} aria-label="Punti squadra 1" onchange="sc(${i},${k},'s1',this.value)">–<input type="number" min="0" inputmode="numeric" value="${m.s2}" ${lk} aria-label="Punti squadra 2" onchange="sc(${i},${k},'s2',this.value)"></div>${team(T,r,m.t2)}</div>${tie?'<div class="mut">Il pareggio non è ammesso: correggi il punteggio.</div>':''}${d?`<div class="mut">Vincitori 3 pt · sconfitti ${Math.min(+m.s1,+m.s2)>=20?1:0} pt</div>`:''}</div>`}).join('')).reverse();
 return `<p class="mut">Modalità: ${C.mode===2?'2 campi · 8 giocatori':'3 campi · 12 giocatori'} · 5 turni</p><div class="row">${ctl}</div>`+body.join('')}
 const split=()=>{const C=cfg(),ids=S.players.filter(p=>S.sel[p.id]).sort((a,b)=>med(b)-med(a)).map(p=>p.id);return{A:ids.slice(0,C.group),B:ids.slice(C.group,C.group*2)}};
 function gruppi(){
@@ -303,13 +332,15 @@ function nxt(){
   const T=S.T,last=T.rounds[T.rounds.length-1];
   if(!last.matches.every(done))return;
   const W=[],L=[];
-  last.matches.forEach(m=>{
-    const w=+m.s1>+m.s2;
-    (w?m.t1:m.t2).forEach(x=>W.push(x));
-    (w?m.t2:m.t1).forEach(x=>L.push(x));
-  });
+  if(T.rounds.length!==4 || T.mode!==3){
+    last.matches.forEach(m=>{
+      const w=+m.s1>+m.s2;
+      (w?m.t1:m.t2).forEach(x=>W.push(x));
+      (w?m.t2:m.t1).forEach(x=>L.push(x));
+    });
+  }
   try{
-    T.rounds.push(mk(W,L,used(T)));
+    T.rounds.push(T.rounds.length===4 && T.mode===3 ? mkFinals() : mk(W,L,used(T)));
     save();
     R();
   }catch(e){
