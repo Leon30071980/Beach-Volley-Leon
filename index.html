@@ -45,7 +45,7 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 .login-overlay{position:fixed;inset:0;z-index:20;background:#0009;display:none;align-items:center;justify-content:center;padding:18px}.login-overlay.open{display:flex}.login-card{width:100%;max-width:380px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 12px 40px #0003}.login-card label{display:block;font-weight:600;margin:12px 0 5px}.login-card input{min-width:0;padding:11px}.login-card .row button{flex:1}
 :focus-visible{outline:2px solid var(--b);outline-offset:2px}
 </style></head><body>
-<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.19.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
+<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.20.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
 <main id="v"></main>
 <div id="loginOverlay" class="login-overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-card">
@@ -78,7 +78,7 @@ function rememberTab(t){
 }
 let S={players:[],sel:{},T:null,mode:3},tab=lastTab()||'live',ROLE='NONE',ADMIN=false,AUTH=null,timer,q=Promise.resolve();
 let sorts={generale:{key:'med',dir:-1},gruppi:{key:'med',dir:-1}};
-const norm=d=>{d=d&&typeof d=='object'?d:{};const players=(d.players||[]).map(p=>{const oldG=Number.isFinite(+p.g)?+p.g:0;const t=Number.isFinite(+p.t)?+p.t:Math.floor(oldG/5);return{...p,t}});return{players,sel:d.sel||{},T:d.T||null,mode:d.mode||d.T?.mode||3}};
+const norm=d=>{d=d&&typeof d=='object'?d:{};const players=(d.players||[]).map(p=>{const oldG=Number.isFinite(+p.g)?+p.g:0;const t=Number.isFinite(+p.t)?+p.t:Math.floor(oldG/5);return{...p,t,vinti:Math.max(0,Math.trunc(Number(p.vinti)||0)),ultimo:Math.max(0,Math.trunc(Number(p.ultimo)||0))}});return{players,sel:d.sel||{},T:d.T||null,mode:d.mode||d.T?.mode||3}};
 function setSt(t,err){const e=document.getElementById('st');if(e){e.textContent=t;e.style.color=err?'#c0392b':''}}
 function save(){if(ROLE!=='ADMIN'&&ROLE!=='USER')return;clearTimeout(timer);setSt('Salvataggio…');timer=setTimeout(()=>{const snap=JSON.parse(JSON.stringify(S));
 q=q.then(()=>sb.rpc('salva_stato_auth',{p_data:snap})).then(({error})=>setSt(error?'Errore di salvataggio: '+error.message:'Salvato',!!error)).catch(()=>setSt('Errore di rete',true))},350)}
@@ -354,14 +354,16 @@ function gruppi(){
   <div class="card"><p>Selezioni i ${C.players} giocatori della Classifica Generale che partecipano. Il sistema li divide per media: le ${C.group} medie più alte nel gruppo A, le altre ${C.group} nel gruppo B.</p><p><b>${n}/${C.players} selezionati</b></p><div class="row"><button class="s" onclick="selTop()">Seleziona i primi ${C.players}</button><button class="s" onclick="S.sel={};save();R()">Azzera</button></div>${P.length<C.players?`<p class="mut">Servono almeno ${C.players} giocatori nella Classifica Generale.</p>`:''}<table><tr><th style="width:40px"></th>${th('gruppi','Nome','n')}${th('gruppi','Cognome','c')}${th('gruppi','Sesso','s')}${th('gruppi','Tornei','t','n')}${th('gruppi','Media','med','n')}</tr>${P.map(p=>`<tr><td style="width:40px"><input type="checkbox" style="width:22px;height:22px;min-width:0" aria-label="Seleziona ${esc(p.n)} ${esc(p.c)}" ${S.sel[p.id]?'checked':''} ${!S.sel[p.id]&&n>=C.players?'disabled':''} onchange="tg('${p.id}')"></td><td><span class="sexname ${p.s=='F'?'F':'M'}">${esc(p.n)}</span></td><td>${esc(p.c)}</td><td>${p.s||'M'}</td><td class="n">${p.t||0}</td><td class="n">${med(p).toFixed(2)}</td></tr>`).join('')}</table></div>
   `;
 }
+// Icona del cucchiaio di legno, distinta dal comune emoji del cucchiaio.
+const WOODEN_SPOON='<svg viewBox="0 0 22 22" width="17" height="17" aria-hidden="true" style="vertical-align:-3px"><ellipse cx="8" cy="7" rx="4.5" ry="6" transform="rotate(-35 8 7)" fill="#ad7040" stroke="#86552e" stroke-width=".8"/><path d="M11 11 L20 20" stroke="#ad7040" stroke-width="2.8" stroke-linecap="round"/><path d="M6.5 4.5 Q8 3.5 9.5 6" fill="none" stroke="#d4a77b" stroke-width=".9" stroke-linecap="round"/></svg>';
 function generale(){
   const P=sortedPlayers('generale'),I=(id,f,v,t)=>`<input class="sexname ${S.players.find(x=>x.id==id)?.s=='F'?'F':'M'}" ${t||''} value="${esc(v)}" onchange="ed('${id}','${f}',this.value)">`,Sel=(id,v)=>`<select onchange="ed('${id}','s',this.value)"><option value="M" ${v=='M'?'selected':''}>M</option><option value="F" ${v=='F'?'selected':''}>F</option></select>`;
-  return `<div class="card"><table><tr><th>#</th>${th('generale','Nome','n')}${th('generale','Cognome','c')}${th('generale','Sesso','s')}${th('generale','Punti','tot','n')}${th('generale','Tornei','t','n')}${th('generale','Media','med','n')}<th></th></tr>${P.map((p,i)=>`<tr><td>${i+1}</td><td>${I(p.id,'n',p.n)}</td><td>${I(p.id,'c',p.c)}</td><td>${Sel(p.id,p.s||'M')}</td><td>${I(p.id,'tot',p.tot,'type="number" min="0"')}</td><td>${I(p.id,'t',p.t,'type="number" min="0"')}</td><td class="n"><b>${med(p).toFixed(2)}</b></td><td class="adm"><button class="x" aria-label="Elimina" onclick="del('${p.id}')">✕</button></td></tr>`).join('')}</table></div>
+  return `<div class="card"><table><tr><th>#</th>${th('generale','Nome','n')}${th('generale','Cognome','c')}${th('generale','Sesso','s')}${th('generale','Punti','tot','n')}${th('generale','Tornei','t','n')}${th('generale','Media','med','n')}${th('generale','🏆 Vinti','vinti','n')}${th('generale',WOODEN_SPOON+' Ultimo','ultimo','n')}<th></th></tr>${P.map((p,i)=>`<tr><td>${i+1}</td><td>${I(p.id,'n',p.n)}</td><td>${I(p.id,'c',p.c)}</td><td>${Sel(p.id,p.s||'M')}</td><td>${I(p.id,'tot',p.tot,'type="number" min="0"')}</td><td>${I(p.id,'t',p.t,'type="number" min="0"')}</td><td class="n"><b>${med(p).toFixed(2)}</b></td><td>${I(p.id,'vinti',p.vinti,'type="number" min="0" step="1" aria-label="Tornei vinti"')}</td><td>${I(p.id,'ultimo',p.ultimo,'type="number" min="0" step="1" aria-label="Ultimi posti"')}</td><td class="adm"><button class="x" aria-label="Elimina" onclick="del('${p.id}')">✕</button></td></tr>`).join('')}</table></div>
 <div class="card adm"><div class="row"><input id="nn" placeholder="Nome" style="flex:1"><input id="nc" placeholder="Cognome" style="flex:1"><select id="ns" style="width:auto"><option value="M">M</option><option value="F">F</option></select><button class="p" onclick="add()">Aggiungi</button></div><p class="mut">Media = punti totali ÷ tornei giocati.</p><button class="s" onclick="if(confirm('Eliminare tutti i giocatori e il torneo?')){S={players:[],sel:{},T:null};save();R()}">Svuota tutto</button></div>`}
 
-function ed(id,f,v){const p=S.players.find(x=>x.id==id);p[f]=(f=='n'||f=='c'||f=='s')?v.trim():Math.max(0,+v||0);save();R()}
+function ed(id,f,v){const p=S.players.find(x=>x.id==id);p[f]=(f=='n'||f=='c'||f=='s')?v.trim():(f==='vinti'||f==='ultimo'?Math.max(0,Math.trunc(Number(v)||0)):Math.max(0,+v||0));save();R()}
 function del(id){S.players=S.players.filter(x=>x.id!=id);delete S.sel[id];save();R()}
-function add(){const n=nn.value.trim(),c=nc.value.trim(),s=ns.value;if(!n)return;S.players.push({id:'p'+Date.now().toString(36),n,c,s,tot:0,t:0});save();R()}
+function add(){const n=nn.value.trim(),c=nc.value.trim(),s=ns.value;if(!n)return;S.players.push({id:'p'+Date.now().toString(36),n,c,s,tot:0,t:0,vinti:0,ultimo:0});save();R()}
 function tg(id){if(S.sel[id])delete S.sel[id];else if(Object.keys(S.sel).length<cfg().players)S.sel[id]=1;save();R()}
 function selTop(){S.sel={};[...S.players].sort((a,b)=>med(b)-med(a)).slice(0,cfg().players).forEach(p=>S.sel[p.id]=1);save();R()}
 function start(){if(S.T&&!confirm('Il torneo in corso verrà azzerato. Continuare?'))return;const g=split(),names={},grp={};g.A.forEach(id=>grp[id]='A');g.B.forEach(id=>grp[id]='B');S.players.forEach(p=>{if(grp[p.id])names[p.id]=p.n+' '+(p.c||'').charAt(0)+'.'});
@@ -397,9 +399,15 @@ function nxt(){
   }
 }
 function updateRows(){
-  return table().map(x=>{
+  const ranking=table();
+  return ranking.map((x,index)=>{
     const p=S.players.find(q=>q.id==x.id);
-    return {id:x.id,name:p?.n||'',surname:p?.c||'',sex:p?.s||'M',oldTot:p?.tot||0,oldT:p?.t||0,addPt:x.pt,addT:1,newTot:(p?.tot||0)+x.pt,newT:(p?.t||0)+1,newMed:((p?.t||0)+1)?((p?.tot||0)+x.pt)/((p?.t||0)+1):0};
+    return {id:x.id,name:p?.n||'',surname:p?.c||'',sex:p?.s||'M',
+      oldTot:p?.tot||0,oldT:p?.t||0,addPt:x.pt,addT:1,
+      newTot:(p?.tot||0)+x.pt,newT:(p?.t||0)+1,
+      newMed:((p?.t||0)+1)?((p?.tot||0)+x.pt)/((p?.t||0)+1):0,
+      oldVinti:p?.vinti||0,oldUltimo:p?.ultimo||0,
+      addVinti:index===0?1:0,addUltimo:index===ranking.length-1?1:0};
   });
 }
 function aggiorna(){
@@ -410,7 +418,7 @@ function aggiorna(){
   if(T.applied)return `<div class="card"><h2>Classifica Generale già aggiornata</h2><p>Questo torneo è già stato contabilizzato.</p></div>`;
   if(T.review==='rejected')return `<div class="card"><h2>Aggiornamento classifica rifiutato</h2><p>La proposta non è stata applicata. È possibile riproporla dalla Classifica live.</p><button class="p" onclick="proponiAggiornamento()">Riproporre aggiornamento</button></div>`;
   const rows=updateRows();
-  return `<div class="card"><h2>Aggiorna classifica generale</h2><p>Questa è un'anteprima delle modifiche che verranno applicate. I valori con <b>+</b> indicano ciò che verrà aggiunto alla classifica.</p><div class="previewbox"><table><tr><th>Giocatore</th><th class="n">Punti attuali</th><th class="n">Variazione</th><th class="n">Tornei attuali</th><th class="n">Nuovi tornei</th><th class="n">Nuova media</th></tr>${rows.map(r=>`<tr><td><span class="sexname ${r.sex=='F'?'F':'M'}">${esc(r.name)} ${esc(r.surname)}</span></td><td class="n">${r.oldTot}</td><td class="n"><b class="updateplus">+${r.addPt}</b></td><td class="n">${r.oldT}</td><td class="n"><b class="updateplus">+${r.addT}</b></td><td class="n"><b>${r.newMed.toFixed(2)}</b></td></tr>`).join('')}</table></div>${ADMIN?`<div class="row"><button class="p" onclick="confirmUpdate()">Conferma e aggiorna classifica</button><button class="s" onclick="rejectUpdate()">Rifiuta proposta</button></div>`:`<p class="mut">Proposta pronta. Solo l'Admin può confermare e applicare queste modifiche.</p>`}</div>`;
+  return `<div class="card"><h2>Aggiorna classifica generale</h2><p>Questa è un'anteprima delle modifiche che verranno applicate. I valori con <b>+</b> indicano ciò che verrà aggiunto alla classifica.</p><div class="previewbox"><table><tr><th>Giocatore</th><th class="n">Punti attuali</th><th class="n">Variazione</th><th class="n">Tornei attuali</th><th class="n">Nuovi tornei</th><th class="n">Nuova media</th><th class="n">🏆 Vinti</th><th class="n">${WOODEN_SPOON} Ultimo</th></tr>${rows.map(r=>`<tr><td><span class="sexname ${r.sex=='F'?'F':'M'}">${esc(r.name)} ${esc(r.surname)}</span></td><td class="n">${r.oldTot}</td><td class="n"><b class="updateplus">+${r.addPt}</b></td><td class="n">${r.oldT}</td><td class="n"><b class="updateplus">+${r.addT}</b></td><td class="n"><b>${r.newMed.toFixed(2)}</b></td><td class="n">${r.oldVinti}${r.addVinti?'<b class="updateplus"> +1</b>':''}</td><td class="n">${r.oldUltimo}${r.addUltimo?'<b class="updateplus"> +1</b>':''}</td></tr>`).join('')}</table></div>${ADMIN?`<div class="row"><button class="p" onclick="confirmUpdate()">Conferma e aggiorna classifica</button><button class="s" onclick="rejectUpdate()">Rifiuta proposta</button></div>`:`<p class="mut">Proposta pronta. Solo l'Admin può confermare e applicare queste modifiche.</p>`}</div>`;
 }
 function rejectUpdate(){
   if(!ADMIN || !S.T || S.T.applied)return;
@@ -429,7 +437,7 @@ function confirmUpdate(){
   if(!ADMIN || !S.T || S.T.applied)return;
   const rows=updateRows();
   if(!confirm("Confermare l'aggiornamento della Classifica Generale per tutti i "+rows.length+" giocatori?"))return;
-  rows.forEach(r=>{const p=S.players.find(q=>q.id==r.id);if(p){p.tot=r.newTot;p.t=r.newT}});
+  rows.forEach(r=>{const p=S.players.find(q=>q.id==r.id);if(p){p.tot=r.newTot;p.t=r.newT;p.vinti=r.oldVinti+r.addVinti;p.ultimo=r.oldUltimo+r.addUltimo}});
   S.T.applied=true;
   S.T.review='approved';
   save();
