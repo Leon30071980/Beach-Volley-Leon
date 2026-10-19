@@ -45,7 +45,7 @@ input[type=number]{width:58px;min-width:0;text-align:center}
 .login-overlay{position:fixed;inset:0;z-index:20;background:#0009;display:none;align-items:center;justify-content:center;padding:18px}.login-overlay.open{display:flex}.login-card{width:100%;max-width:380px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 12px 40px #0003}.login-card label{display:block;font-weight:600;margin:12px 0 5px}.login-card input{min-width:0;padding:11px}.login-card .row button{flex:1}
 :focus-visible{outline:2px solid var(--b);outline-offset:2px}
 </style></head><body>
-<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.18.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
+<header><div class="in"><h1>Torneo Beach Volley Leon <span style="font-size:11px;font-weight:400;opacity:.7;white-space:nowrap">v1.19.0</span></h1><div class="row" style="justify-content:space-between;align-items:center;margin:4px 0"><span class="pill" id="st"></span><button class="s" id="ab" onclick="login()" style="padding:6px 12px;font-size:13px"></button></div><nav id="nav"></nav></div></header>
 <main id="v"></main>
 <div id="loginOverlay" class="login-overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-card">
@@ -219,40 +219,65 @@ function opponentCost(t1,t2,opp){
   let n=0;for(const a of t1)for(const b of t2)if(opp.has(a+'|'+b))n++;
   return n;
 }
+// Conta le coppie F+F: una coppia mista F+M ha sempre priorita su F+F,
+// a parita di vincoli piu importanti (nessun compagno ripetuto, niente FF vs MM).
+function femalePairs(t1,t2){
+  const isFF=team=>team.every(id=>(S.players.find(p=>p.id===id)?.s||'M')==='F');
+  return Number(isFF(t1))+Number(isFF(t2));
+}
 function mk(A,B,u){
-  const C=cfg(),opp=priorOpponents();
-  let best=null,bestScore=Infinity;
-  // Ricerca casuale di squadre AB con compagni mai ripetuti.
-  // Le disposizioni dei campi sono enumerate per non trascurare le alternative.
-  function matchings(pairs){
-    if(!pairs.length)return [[]];
-    const first=pairs[0],out=[];
-    for(let j=1;j<pairs.length;j++){
-      const rest=pairs.filter((_,k)=>k!==0&&k!==j);
-      for(const tail of matchings(rest))out.push([[first,pairs[j]],...tail]);
+  const opp=priorOpponents();
+  let best=null,bestScore=Infinity,perfect=false;
+  // Si esaminano TUTTI gli abbinamenti A+B consentiti (6! al massimo):
+  // il primo turno resta casuale, ma la preferenza F+M non dipende dalla fortuna.
+  const a=sh(A),b=sh(B),pairs=[],taken=new Set();
+  function matchings(arr){
+    if(!arr.length)return [[]];
+    const first=arr[0],out=[];
+    for(let j=1;j<arr.length;j++){
+      const rest=arr.filter((_,k)=>k!==0&&k!==j);
+      for(const tail of matchings(rest))out.push([[first,arr[j]],...tail]);
     }
     return out;
   }
-  for(let z=0;z<1200;z++){
-    const a=sh(A),b=sh(B),pairs=a.map((x,k)=>[x,b[k]]);
-    if(pairs.some(q=>u.has(key(q))))continue;
-    for(const arrangement of matchings(pairs)){
-      let clashes=0,repeats=0;
-      for(const [t1,t2] of arrangement){
-        if(genderClash(t1,t2))clashes++;
-        repeats+=opponentCost(t1,t2,opp);
+  function assign(i){
+    if(perfect)return;
+    if(i===a.length){
+      for(const arrangement of matchings(pairs)){
+        let clashes=0,ff=0,repeats=0;
+        for(const [t1,t2] of arrangement){
+          clashes+=Number(genderClash(t1,t2));
+          ff+=femalePairs(t1,t2);
+          repeats+=opponentCost(t1,t2,opp);
+        }
+        // Ordine: evitare FF vs MM, preferire F+M, variare gli avversari.
+        // I compagni ripetuti vengono esclusi a monte, senza eccezioni.
+        const score=clashes*100000+ff*1000+repeats*3;
+        if(score<bestScore){
+          bestScore=score;
+          best=arrangement.map(([t1,t2])=>[[...t1],[...t2]]);
+        }
+        if(score===0){perfect=true;break}
       }
-      const score=clashes*100000+repeats*3;
-      if(score<bestScore){bestScore=score;best=arrangement;if(score===0)break}
+      return;
     }
-    if(bestScore===0)break;
+    for(const id of b){
+      if(taken.has(id)||u.has(key([a[i],id])))continue;
+      taken.add(id);
+      pairs.push([a[i],id]);
+      assign(i+1);
+      pairs.pop();
+      taken.delete(id);
+      if(perfect)return;
+    }
   }
+  assign(0);
   if(!best)throw new Error('Impossibile generare il turno senza ripetere una coppia di compagni.');
   return {A:[...A],matches:sh(best).map(([t1,t2])=>({t1,t2,s1:'',s2:''}))};
 }
 // Finali: i quattro classificati di ogni fascia rimangono nello stesso campo.
 // Tra le tre possibili divisioni in coppie, prima si evita FF contro MM,
-// poi si minimizzano le ripetizioni di compagni: se inevitabili, sono ammesse
+// poi si preferiscono F+M rispetto a F+F, quindi si minimizzano le ripetizioni di compagni: se inevitabili, sono ammesse
 // soltanto nel quinto turno. A parita, prevale la disposizione per classifica.
 function mkFinals(){
   const ranked=table().map(x=>x.id),u=used(S.T),opp=priorOpponents(),matches=[];
@@ -267,8 +292,9 @@ function mkFinals(){
     const valid=candidates.map(([t1,t2],index)=>({t1,t2,index,
       repeated:Number(u.has(key(t1)))+Number(u.has(key(t2))),
       clash:Number(genderClash(t1,t2)),
+      ff:femalePairs(t1,t2),
       opponents:opponentCost(t1,t2,opp)
-    })).sort((a,b)=>a.clash-b.clash||a.repeated-b.repeated||a.index-b.index||a.opponents-b.opponents);
+    })).sort((a,b)=>a.clash-b.clash||a.ff-b.ff||a.repeated-b.repeated||a.index-b.index||a.opponents-b.opponents);
     // Anche se tutti e tre gli abbinamenti ripetono compagni, la finale si gioca.
     const chosen=valid[0];
     matches.push({t1:chosen.t1,t2:chosen.t2,s1:'',s2:''});
